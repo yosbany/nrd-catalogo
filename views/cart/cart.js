@@ -202,6 +202,10 @@
     if (suggestionsSubtotalEl) suggestionsSubtotalEl.textContent = formatCurrency(subtotal);
 
     if (suggestionsEl && suggestionsSection) {
+      if (items.length === 0) {
+        suggestionsSection.classList.add('hidden');
+        suggestionsEl.innerHTML = '';
+      } else {
       const config = window.getCatalogConfig ? window.getCatalogConfig() : {};
       const catalogProducts = config.products || {};
       const allProducts = typeof window.getProducts === 'function' ? window.getProducts() : [];
@@ -278,6 +282,7 @@
             btn.addEventListener('click', () => window.showProductDetail(item.product));
           }
         });
+      }
       }
     }
   }

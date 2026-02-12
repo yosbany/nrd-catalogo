@@ -18,7 +18,7 @@
     const src = typeof window.assetUrl === 'function' ? window.assetUrl(raw) : raw;
     const fallback = (typeof window.getDefaultProductImageUrl === 'function' ? window.getDefaultProductImageUrl() : 'assets/icons/icon-192.png');
     const displayName = typeof window.getProductDisplayName === 'function' ? window.getProductDisplayName(p) : (p.name || '');
-    return `<img src="${escapeHtml(src)}" alt="${escapeHtml(displayName)}" class="w-full aspect-[4/3] object-cover bg-gray-100 rounded-none" data-fallback="${escapeHtml(fallback)}" onerror="this.onerror=null;var f=this.getAttribute('data-fallback');if(f)this.src=f;">`;
+    return `<img src="${escapeHtml(src)}" alt="${escapeHtml(displayName)}" class="w-full h-full object-cover bg-gray-100 rounded-none" data-fallback="${escapeHtml(fallback)}" onerror="this.onerror=null;var f=this.getAttribute('data-fallback');if(f)this.src=f;">`;
   }
 
 
@@ -94,7 +94,7 @@
     };
 
     content.innerHTML = `
-      <div class="relative aspect-[3/2] max-h-[40vh] overflow-hidden bg-gray-100 rounded-none">
+      <div class="relative w-full h-[40vh] md:h-[45vh] overflow-hidden bg-gray-100 rounded-none">
         ${productImageHtml(product)}
         <button type="button" id="product-back" class="absolute top-2 left-2 w-9 h-9 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 text-base font-light">✕</button>
       </div>

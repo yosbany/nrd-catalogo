@@ -20,6 +20,57 @@
     return config.minimumForShipping || 0;
   }
 
+  /**
+   * Construye las opciones de horario de retiro en formato 24h, cada 30 minutos:
+   * desde la media hora siguiente (30 min después del pedido) redondeada al :00 o :30, hasta la hora de cierre.
+   * Valor por defecto: primera franja disponible.
+   */
+  function updateRetiroTimeSelect() {
+    const select = document.getElementById('checkout-retiro-time');
+    if (!select) return;
+    const config = window.getCatalogConfig ? window.getCatalogConfig() : {};
+    const closeStr = (config.storeCloseTime || '20:00').trim();
+    const closeMatch = closeStr.match(/^(\d{1,2}):(\d{2})$/);
+    const closeMin = closeMatch
+      ? parseInt(closeMatch[1], 10) * 60 + parseInt(closeMatch[2], 10)
+      : 20 * 60;
+    const now = new Date();
+    const currentMin = now.getHours() * 60 + now.getMinutes();
+    const inThirtyMin = currentMin + 30;
+    const firstSlotMin = Math.ceil(inThirtyMin / 30) * 30;
+    if (firstSlotMin >= 24 * 60) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'Sin horarios disponibles';
+      select.innerHTML = '';
+      select.appendChild(opt);
+      select.value = '';
+      return;
+    }
+    const options = [];
+    for (let m = firstSlotMin; m <= closeMin; m += 30) {
+      const h = Math.floor(m / 60) % 24;
+      const min = m % 60;
+      options.push(String(h).padStart(2, '0') + ':' + String(min).padStart(2, '0'));
+    }
+    select.innerHTML = '';
+    if (options.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'Sin horarios disponibles';
+      select.appendChild(opt);
+      select.value = '';
+      return;
+    }
+    options.forEach(function (val) {
+      const opt = document.createElement('option');
+      opt.value = val;
+      opt.textContent = val;
+      select.appendChild(opt);
+    });
+    select.value = options[0];
+  }
+
   function updateTotals() {
     const subtotal = window.cart ? window.cart.getSubtotal() : 0;
     const shipping = getShippingCost();
@@ -97,6 +148,7 @@
     document.getElementById('checkout-address-wrap').classList.toggle('hidden', !isEnvio);
     const retiroTimeWrap = document.getElementById('checkout-retiro-time-wrap');
     if (retiroTimeWrap) retiroTimeWrap.classList.toggle('hidden', isEnvio);
+    if (!isEnvio) updateRetiroTimeSelect();
     const payWrap = document.getElementById('checkout-payment-wrap');
     const payRequired = document.getElementById('checkout-payment-required');
     if (payWrap) payWrap.classList.toggle('hidden', !isEnvio);
@@ -114,6 +166,7 @@
         document.getElementById('checkout-address-wrap').classList.toggle('hidden', !isEnvio);
         const retiroTimeWrap = document.getElementById('checkout-retiro-time-wrap');
         if (retiroTimeWrap) retiroTimeWrap.classList.toggle('hidden', isEnvio);
+        if (!isEnvio) updateRetiroTimeSelect();
         const payWrap = document.getElementById('checkout-payment-wrap');
         const payRequired = document.getElementById('checkout-payment-required');
         if (payWrap) payWrap.classList.toggle('hidden', !isEnvio);
@@ -133,6 +186,7 @@
         document.getElementById('checkout-address-wrap').classList.toggle('hidden', !isEnvio);
         const retiroTimeWrap = document.getElementById('checkout-retiro-time-wrap');
         if (retiroTimeWrap) retiroTimeWrap.classList.toggle('hidden', isEnvio);
+        if (!isEnvio) updateRetiroTimeSelect();
         const payWrap = document.getElementById('checkout-payment-wrap');
         const payRequired = document.getElementById('checkout-payment-required');
         if (payWrap) payWrap.classList.toggle('hidden', !isEnvio);
@@ -190,15 +244,20 @@
         'Cliente: ' + name + ' - Tel: ' + phone
       ].filter(Boolean).join('\n');
 
+      // productId/variantId asociados al artículo u opción del catálogo para que en pedidos se vea qué se pidió
       const getOrderProductId = typeof window.getOrderProductId === 'function' ? window.getOrderProductId : (pid, vid) => vid && /^P\d+(_\w+)?$/i.test(vid) ? vid : pid;
       const items = window.cart.items.map((i) => {
         const productId = getOrderProductId(i.productId, i.variantId) || i.productId;
-        return {
+        const item = {
           productId,
           productName: i.productName,
           quantity: i.quantity,
           price: i.price
         };
+        if (i.variantId != null && String(i.variantId).trim() !== '') {
+          item.variantId = String(i.variantId).trim();
+        }
+        return item;
       });
 
       try {

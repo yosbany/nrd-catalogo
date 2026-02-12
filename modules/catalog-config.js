@@ -159,11 +159,20 @@ function getProductOptionConfig(product) {
     const option = optCatalog[opt.optionId];
     if (!option || !option.choices) continue;
     const variantSkus = opt.variantSkus || {};
-    const choices = option.choices.map((c) => ({
-      id: c.id,
-      name: c.name,
-      variantSku: variantSkus[c.id] || variantSkus[c.name]
-    })).filter((c) => c.variantSku);
+    const disabledIds = Array.isArray(opt.disabledChoiceIds) ? opt.disabledChoiceIds : [];
+    const choices = option.choices
+      .filter((c) => {
+        const id = String(c.id || '').trim();
+        const name = String(c.name || '').trim();
+        const sku = String(c.sku || '').trim();
+        return !disabledIds.includes(id) && !disabledIds.includes(name) && !disabledIds.includes(sku);
+      })
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        variantSku: variantSkus[c.id] || variantSkus[c.name]
+      }))
+      .filter((c) => c.variantSku);
     if (choices.length > 0) result.push({ optionId: opt.optionId, label: option.label, choices });
   }
   return result;

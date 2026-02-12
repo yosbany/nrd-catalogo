@@ -7,13 +7,13 @@
   <meta name="description" content="Catálogo y pedidos - Panadería Nueva Río D'or">
   <title>Nueva Río D'or - Pedidos</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="assets/styles/styles.css?v=1770922440099">
+  <link rel="stylesheet" href="assets/styles/styles.css?v=1770930126913">
   <meta name="theme-color" content="#dc2626">
   <link rel="manifest" href="manifest.json">
-  <link rel="shortcut icon" type="image/png" href="assets/icons/icon-192.png?v=1770922440099">
-  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=1770922440099">
-  <link rel="apple-touch-icon" href="assets/icons/icon-192.png?v=1770922440099">
-  <script>window.CATALOG_CACHE_VERSION = '1770922440099';</script>
+  <link rel="shortcut icon" type="image/png" href="assets/icons/icon-192.png?v=1770930126913">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=1770930126913">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png?v=1770930126913">
+  <script>window.CATALOG_CACHE_VERSION = '1770930126913';</script>
 
   <!-- Limpieza de cache al cargar nueva versión (sin añadir ?v= a la URL) -->
   <script>
@@ -80,10 +80,10 @@
           <input type="search" id="home-search" placeholder="Buscar productos..." autocomplete="off"
             class="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
         </div>
-        <div class="flex flex-nowrap items-center gap-2 mb-4">
-          <div class="relative flex-1 min-w-0" id="home-section-wrap">
-            <button type="button" id="home-section-btn" class="w-full inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 min-w-0">
-              <span id="home-section-btn-text" class="truncate">Todos</span>
+        <div class="flex flex-nowrap items-center justify-start gap-2 mb-4">
+          <div class="relative w-auto flex-initial" id="home-section-wrap">
+            <button type="button" id="home-section-btn" class="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 whitespace-nowrap">
+              <span id="home-section-btn-text" class="truncate max-w-[8rem]">Todos</span>
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div id="home-section-dropdown" class="hidden absolute top-full left-0 mt-1 min-w-[10rem] max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
@@ -91,7 +91,7 @@
             </div>
           </div>
           <button type="button" id="home-sort-price-btn" class="inline-flex items-center gap-1.5 px-2.5 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 flex-shrink-0 whitespace-nowrap">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+            <span id="home-sort-price-btn-icon" aria-hidden="true"><!-- icono up/down según estado, rellenado por JS --></span>
             <span id="home-sort-price-btn-text">Más bajo primero</span>
           </button>
         </div>
@@ -159,19 +159,23 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de entrega</label>
             <div class="flex gap-2">
-              <label class="flex-1 flex items-center justify-center p-3 border-2 border-gray-300 cursor-pointer checkout-type-option" data-type="retiro">
-                <input type="radio" name="deliveryType" value="retiro" class="sr-only" checked>
-                <span>Retiro en local</span>
-              </label>
-              <label class="flex-1 flex items-center justify-center p-3 border-2 border-gray-300 cursor-pointer checkout-type-option" data-type="envio">
-                <input type="radio" name="deliveryType" value="envio" class="sr-only">
+              <label class="flex-1 flex flex-col items-center justify-center gap-1.5 p-3 border-2 border-gray-300 cursor-pointer checkout-type-option has-border" data-type="envio">
+                <input type="radio" name="deliveryType" value="envio" class="sr-only" checked>
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 flex-shrink-0 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                 <span>Envío a domicilio</span>
+              </label>
+              <label class="flex-1 flex flex-col items-center justify-center gap-1.5 p-3 border-2 border-gray-300 cursor-pointer checkout-type-option" data-type="retiro">
+                <input type="radio" name="deliveryType" value="retiro" class="sr-only">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 flex-shrink-0 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span>Retiro en local</span>
               </label>
             </div>
           </div>
           <div id="checkout-retiro-time-wrap">
             <label class="block text-sm font-medium text-gray-700 mb-1">Horario de retiro</label>
-            <input type="time" id="checkout-retiro-time" class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
+            <select id="checkout-retiro-time" class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500" aria-label="Horario de retiro en formato 24 horas">
+              <!-- Opciones desde (hora actual + 1) hasta cierre, formato 24h; se rellenan por JS -->
+            </select>
           </div>
           <div id="checkout-address-wrap" class="hidden">
             <label class="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
@@ -192,10 +196,18 @@
           <div id="checkout-payment-wrap">
             <label class="block text-sm font-medium text-gray-700 mb-1">Medio de pago <span id="checkout-payment-required">*</span></label>
             <div class="space-y-2">
-              <label class="flex items-center gap-2 p-2 border border-gray-300 cursor-pointer hover:bg-gray-50 checkout-payment-option">
-                <input type="radio" name="payment" value="efectivo" class="text-red-600">
-                <span>Efectivo</span>
-              </label>
+              <div>
+                <label class="flex items-center gap-2 p-2 border border-gray-300 cursor-pointer hover:bg-gray-50 checkout-payment-option">
+                  <input type="radio" name="payment" value="efectivo" class="text-red-600">
+                  <span>Efectivo</span>
+                </label>
+                <div id="checkout-cash-wrap" class="hidden mt-2 pl-2 border-l-2 border-gray-200 ml-1">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">¿Con cuánto vas a pagar?</label>
+                  <input type="number" id="checkout-cash" min="0" step="1" placeholder="Monto en efectivo" class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                  <p id="checkout-change" class="mt-1 text-sm text-gray-600 hidden"></p>
+                  <p id="checkout-cash-warning" class="mt-1 text-sm text-red-600 hidden"></p>
+                </div>
+              </div>
               <label class="flex items-center gap-2 p-2 border border-gray-300 cursor-pointer hover:bg-gray-50 checkout-payment-option">
                 <input type="radio" name="payment" value="pos" class="text-red-600">
                 <span>POS (tarjeta)</span>
@@ -205,12 +217,6 @@
                 <span>Mercado Pago</span>
               </label>
             </div>
-          </div>
-          <div id="checkout-cash-wrap" class="hidden">
-            <label class="block text-sm font-medium text-gray-700 mb-1">¿Con cuánto vas a pagar?</label>
-            <input type="number" id="checkout-cash" min="0" step="1" placeholder="Monto en efectivo" class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
-            <p id="checkout-change" class="mt-1 text-sm text-gray-600 hidden"></p>
-            <p id="checkout-cash-warning" class="mt-1 text-sm text-red-600 hidden"></p>
           </div>
           <div class="border-t border-gray-200 pt-4 space-y-1">
             <p class="flex justify-between"><span>Subtotal</span><span id="checkout-subtotal">$ 0</span></p>
@@ -234,10 +240,14 @@
     </main>
   </div>
 
-  <div id="loading-overlay" class="fixed inset-0 bg-black/40 z-50 hidden flex items-center justify-center">
-    <div class="flex flex-col items-center gap-3 bg-white px-8 py-6 border border-gray-200 shadow-xl">
-      <div class="w-10 h-10 border-2 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
-      <span class="text-sm font-medium text-gray-700">Cargando...</span>
+  <div id="loading-overlay" class="loading-overlay fixed inset-0 z-50 hidden flex items-center justify-center">
+    <div class="loading-content flex flex-col items-center gap-4">
+      <div class="loading-dots flex items-center gap-1.5" aria-hidden="true">
+        <span class="loading-dot w-2 h-2 rounded-full bg-red-500"></span>
+        <span class="loading-dot w-2 h-2 rounded-full bg-red-500 loading-dot--2"></span>
+        <span class="loading-dot w-2 h-2 rounded-full bg-red-500 loading-dot--3"></span>
+      </div>
+      <span class="loading-text text-sm font-light text-white/90 tracking-wide">Cargando...</span>
     </div>
   </div>
 
@@ -252,16 +262,16 @@
     window.nrd = typeof NRDDataAccess !== 'undefined' ? new NRDDataAccess() : null;
     if (!window.nrd) console.error('NRDDataAccess no cargó. Verifica la ruta a nrd-data-access.');
   </script>
-  <script src="modules/storage.js?v=1770922440099"></script>
-  <script src="modules/cart.js?v=1770922440099"></script>
-  <script src="modules/catalog-config.js?v=1770922440099"></script>
-  <script src="views/home/home.js?v=1770922440099"></script>
-  <script src="views/catalog/catalog.js?v=1770922440099"></script>
-  <script src="views/product-detail/product-detail.js?v=1770922440099"></script>
-  <script src="views/cart/cart.js?v=1770922440099"></script>
-  <script src="views/checkout/checkout.js?v=1770922440099"></script>
-  <script src="views/success/success.js?v=1770922440099"></script>
-  <script src="app.js?v=1770922440099"></script>
+  <script src="modules/storage.js?v=1770930126913"></script>
+  <script src="modules/cart.js?v=1770930126913"></script>
+  <script src="modules/catalog-config.js?v=1770930126913"></script>
+  <script src="views/home/home.js?v=1770930126913"></script>
+  <script src="views/catalog/catalog.js?v=1770930126913"></script>
+  <script src="views/product-detail/product-detail.js?v=1770930126913"></script>
+  <script src="views/cart/cart.js?v=1770930126913"></script>
+  <script src="views/checkout/checkout.js?v=1770930126913"></script>
+  <script src="views/success/success.js?v=1770930126913"></script>
+  <script src="app.js?v=1770930126913"></script>
   <script>
     (function () {
       var base = document.querySelector('base');

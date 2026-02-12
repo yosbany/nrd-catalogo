@@ -119,8 +119,7 @@
     const cartQty = typeof window.getCartQuantityForProduct === 'function' ? window.getCartQuantityForProduct(productSku) : 0;
     const optCfgs = typeof window.getProductOptionConfig === 'function' ? window.getProductOptionConfig(p) : [];
     const optArr = Array.isArray(optCfgs) ? optCfgs : (optCfgs ? [optCfgs] : []);
-    const hasOptionsFromConfig = optArr.some((o) => o && o.choices && o.choices.length > 0);
-    const hasOptions = hasOptionsFromConfig || (p.variants && Array.isArray(p.variants) && p.variants.length > 0);
+    const hasOptions = optArr.some((o) => o && o.choices && o.choices.length > 0);
     const plusSvg = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
     const card = document.createElement('div');
     card.className = 'flex relative bg-white border border-gray-200 overflow-hidden hover:border-red-300 transition-colors cursor-pointer';
@@ -148,9 +147,15 @@
       }
       if (typeof window.showProductDetail === 'function') window.showProductDetail(p);
     });
-    card.querySelector('.cart-add-one').addEventListener('click', (e) => {
+    const addBtn = card.querySelector('.cart-add-one');
+    addBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
+      addBtn.classList.add('cart-add-one--pulse');
+      addBtn.addEventListener('animationend', function removePulse() {
+        addBtn.removeEventListener('animationend', removePulse);
+        addBtn.classList.remove('cart-add-one--pulse');
+      }, { once: true });
       if (hasOptions) {
         if (typeof window.showProductDetail === 'function') window.showProductDetail(p, { openOptions: true });
         if (typeof window.showView === 'function') window.showView('product');
@@ -206,7 +211,8 @@
   }
 
   let currentCategoryId = 'todos';
-  let sortByPriceAsc = false;
+  /** true = más bajo primero (asc), false = más alto primero (desc). Toggle entre ambos. */
+  let sortByPriceAsc = true;
 
   function escapeHtml(s) {
     if (s == null) return '';
@@ -261,11 +267,17 @@
 
     const sortPriceBtn = document.getElementById('home-sort-price-btn');
     const sortPriceBtnText = document.getElementById('home-sort-price-btn-text');
-    if (sortPriceBtnText) sortPriceBtnText.textContent = sortByPriceAsc ? 'Quitar orden' : 'Más bajo primero';
+    const sortPriceBtnIcon = document.getElementById('home-sort-price-btn-icon');
+    if (sortPriceBtnText) sortPriceBtnText.textContent = sortByPriceAsc ? 'Más bajo primero' : 'Más alto primero';
+    if (sortPriceBtnIcon) {
+      const upArrow = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+      const downArrow = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>';
+      sortPriceBtnIcon.innerHTML = sortByPriceAsc ? upArrow : downArrow;
+    }
     if (sortPriceBtn) {
       sortPriceBtn.onclick = () => {
         sortByPriceAsc = !sortByPriceAsc;
-        applyFiltersAndRender();
+        render();
       };
     }
 
@@ -277,9 +289,11 @@
     const raw = window.getProducts() || [];
     const display = typeof window.getDisplayProducts === 'function' ? window.getDisplayProducts(raw) : raw;
     let list = filterProducts(display, currentCategoryId, searchEl ? searchEl.value : '');
-    if (sortByPriceAsc) {
-      list = [...list].sort((a, b) => (a.price != null ? a.price : 0) - (b.price != null ? b.price : 0));
-    }
+    list = [...list].sort((a, b) => {
+      const pa = a.price != null ? a.price : 0;
+      const pb = b.price != null ? b.price : 0;
+      return sortByPriceAsc ? pa - pb : pb - pa;
+    });
     renderProducts(list, currentCategoryId);
   }
 

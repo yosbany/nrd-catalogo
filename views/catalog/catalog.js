@@ -54,8 +54,7 @@
       const cartQty = typeof window.getCartQuantityForProduct === 'function' ? window.getCartQuantityForProduct(productSku) : 0;
       const optCfgs = typeof window.getProductOptionConfig === 'function' ? window.getProductOptionConfig(p) : [];
       const optArr = Array.isArray(optCfgs) ? optCfgs : (optCfgs ? [optCfgs] : []);
-      const hasOptionsFromConfig = optArr.some((o) => o && o.choices && o.choices.length > 0);
-      const hasOptions = hasOptionsFromConfig || (p.variants && Array.isArray(p.variants) && p.variants.length > 0);
+      const hasOptions = optArr.some((o) => o && o.choices && o.choices.length > 0);
       const card = document.createElement('div');
       card.className = 'flex relative bg-white border border-gray-200 overflow-hidden hover:border-red-300 transition-colors cursor-pointer';
       card.innerHTML = `
@@ -81,9 +80,15 @@
         }
         if (typeof window.showProductDetail === 'function') window.showProductDetail(p);
       });
-      card.querySelector('.cart-add-one').addEventListener('click', (e) => {
+      const addBtn = card.querySelector('.cart-add-one');
+      addBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
+        addBtn.classList.add('cart-add-one--pulse');
+        addBtn.addEventListener('animationend', function removePulse() {
+          addBtn.removeEventListener('animationend', removePulse);
+          addBtn.classList.remove('cart-add-one--pulse');
+        }, { once: true });
         if (hasOptions) {
           if (typeof window.showProductDetail === 'function') window.showProductDetail(p, { openOptions: true });
           if (typeof window.showView === 'function') window.showView('product');

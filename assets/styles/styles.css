@@ -11,3 +11,66 @@ input[type="number"]::-webkit-outer-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
 }
+
+/* Loading overlay: fondo oscuro suave, sin recuadro */
+.loading-overlay {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Tres puntos que rebotan en secuencia */
+.loading-dots {
+  --dot-size: 0.5rem;
+}
+
+.loading-dot {
+  animation: loading-bounce 0.6s ease-in-out infinite both;
+}
+
+.loading-dot--2 {
+  animation-delay: 0.1s;
+}
+
+.loading-dot--3 {
+  animation-delay: 0.2s;
+}
+
+@keyframes loading-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.75);
+    opacity: 0.6;
+  }
+  40% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+/* Pulsación al hacer clic en el botón + de agregar al carrito */
+.cart-add-one {
+  transition: transform 0.15s ease-out, box-shadow 0.3s ease-out;
+}
+
+.cart-add-one--pulse {
+  animation: add-btn-pulse 0.45s ease-out both;
+}
+
+@keyframes add-btn-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.35);
+  }
+  40% {
+    transform: scale(1.2);
+    box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.2);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 10px rgba(220, 38, 38, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+  }
+}

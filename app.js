@@ -52,44 +52,86 @@
 
   if (window.cart) window.cart.onChange(updateCartCount);
 
+  function showCatalogError(message) {
+    var app = document.getElementById('app');
+    var el = document.getElementById('catalog-load-error');
+    if (!el && app) {
+      el = document.createElement('div');
+      el.id = 'catalog-load-error';
+      el.className = 'bg-amber-50 border-b border-amber-200 px-4 py-2 text-sm text-amber-900';
+      app.insertBefore(el, app.firstChild);
+    }
+    if (el) {
+      el.textContent = message;
+      el.classList.remove('hidden');
+    }
+  }
+
+  function clearCatalogError() {
+    var el = document.getElementById('catalog-load-error');
+    if (el) el.classList.add('hidden');
+  }
+
   async function init() {
     const overlay = document.getElementById('loading-overlay');
     if (overlay) overlay.classList.remove('hidden');
     try {
       const nrd = window.nrd;
       if (!nrd) {
-        console.error('NRD Data Access no disponible');
+        console.error('NRD Data Access no disponible. Comprueba que nrd-data-access.js cargue (local: /nrd-data-access/dist/ o CDN).');
+        showCatalogError('No se pudo cargar la librería de datos. Recarga la página.');
         if (overlay) overlay.classList.add('hidden');
         return;
       }
-      // Autenticación anónima para acceder a Firebase (productos, companyInfo)
-      if (nrd.auth) {
-        const user = nrd.auth.getCurrentUser();
-        if (!user) {
-          if (typeof nrd.auth.signInAnonymously === 'function') {
-            await nrd.auth.signInAnonymously();
-          } else {
-            console.warn('signInAnonymously no disponible; activar Anonymous en Firebase Console → Authentication → Sign-in method');
-          }
-        }
+      if (!nrd.catalogConfig) {
+        console.error('nrd.catalogConfig no existe. Usa una versión de nrd-data-access que incluya CatalogConfigService (build reciente).');
+        showCatalogError('Versión de la librería sin soporte de catálogo. Actualiza nrd-data-access.');
+      }
+      // Autenticación anónima para acceder a Firebase (productos, companyInfo, catalog)
+      if (nrd.auth && typeof nrd.auth.signInAnonymously === 'function') {
+        if (!nrd.auth.getCurrentUser()) await nrd.auth.signInAnonymously();
+        await new Promise(function (r) { setTimeout(r, 500); });
       }
       if (nrd.companyInfo) {
-        const info = await nrd.companyInfo.get();
-        window.setCompanyInfo(info);
-        if (typeof setCatalogConfigFromCompany === 'function') setCatalogConfigFromCompany(info);
+        try {
+          const info = await nrd.companyInfo.get();
+          window.setCompanyInfo(info);
+          if (typeof window.setCatalogConfigFromCompany === 'function') window.setCatalogConfigFromCompany(info);
+        } catch (e) { console.warn('CompanyInfo no cargado', e); }
+      }
+      if (nrd.catalogConfig) {
+        if (typeof nrd.catalogConfig.onValue === 'function') {
+          nrd.catalogConfig.onValue(function (config) {
+            if (typeof window.setCatalogConfig === 'function') window.setCatalogConfig(config || {});
+            clearCatalogError();
+            updateHeader();
+            if (typeof window.renderView === 'function' && currentView) window.renderView(currentView);
+          });
+        }
+        try {
+          const remote = await nrd.catalogConfig.get();
+          if (remote && typeof remote === 'object' && typeof window.setCatalogConfig === 'function') {
+            window.setCatalogConfig(remote);
+            clearCatalogError();
+          } else if (remote == null && typeof window.setCatalogConfig === 'function') {
+            window.setCatalogConfig({});
+          }
+        } catch (e) {
+          console.error('Error al cargar catálogo desde Firebase:', e);
+          console.error('Revisa: 1) Reglas de Realtime Database (lectura en /catalog para auth != null). 2) Sign-in anónimo activado en Firebase Console.');
+          showCatalogError('No se pudo cargar el catálogo. Revisa consola (F12) y reglas de Firebase.');
+        }
       }
       if (nrd.products) {
-        const [withVariants, withoutVariants] = await Promise.all([
-          nrd.products.getAll({ withVariants: true }),
-          nrd.products.getAll({ withVariants: false })
-        ]);
-        const allItems = [...(withVariants || []), ...(withoutVariants || [])];
-        const active = allItems.filter((p) => p.active !== false);
-        const withCatalogTag = active.filter((p) => {
-          const tags = Array.isArray(p.tags) ? p.tags : (p.tags && typeof p.tags === 'object' ? Object.values(p.tags) : []);
-          return tags.some((t) => String(t).toUpperCase() === 'CATALOGO');
-        });
-        window.setProducts(withCatalogTag);
+        try {
+          const flatProducts = await nrd.products.getAll({ flat: true });
+          const list = Array.isArray(flatProducts) ? flatProducts : [];
+          const active = list.filter(function (p) { return p.active !== false; });
+          window.setProducts(active);
+        } catch (e) {
+          console.error('Error al cargar productos:', e);
+          window.setProducts([]);
+        }
       }
       updateHeader();
       if (typeof window.initHome === 'function') window.initHome();

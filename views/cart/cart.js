@@ -16,6 +16,26 @@
   }
 
   let activeOrderUnsubscribe = null;
+  let lastActiveOrderStatus = null;
+
+  function playAcceptedBeep() {
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.2, 0);
+      gain.gain.exponentialRampToValueAtTime(0.01, 0.15);
+      osc.start(0);
+      osc.stop(0.15);
+      if (audioContext.state === 'suspended') audioContext.resume();
+    } catch (e) {
+      console.warn('No se pudo reproducir el bip', e);
+    }
+  }
 
   function render() {
     const itemsEl = document.getElementById('cart-items');
@@ -34,15 +54,22 @@
         activeOrderUnsubscribe = null;
       }
       if (activeOrderId && nrd && nrd.orders) {
+        lastActiveOrderStatus = null;
         activeOrderUnsubscribe = nrd.orders.onValueById(activeOrderId, (order) => {
           if (!order) {
+            lastActiveOrderStatus = null;
             if (typeof window.clearActiveOrderIdFromStorage === 'function') window.clearActiveOrderIdFromStorage();
             if (activeOrderEl) { activeOrderEl.classList.add('hidden'); activeOrderEl.innerHTML = ''; }
             return;
           }
           const status = (order.status || 'Pendiente').toLowerCase();
           const isPending = status !== 'completado' && status !== 'cancelado';
+          if (status === 'aceptado' && lastActiveOrderStatus === 'pendiente') {
+            playAcceptedBeep();
+          }
+          lastActiveOrderStatus = status;
           if (!isPending) {
+            lastActiveOrderStatus = null;
             if (typeof window.clearActiveOrderIdFromStorage === 'function') window.clearActiveOrderIdFromStorage();
             activeOrderEl.classList.add('hidden');
             activeOrderEl.innerHTML = '';

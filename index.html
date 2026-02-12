@@ -7,12 +7,13 @@
   <meta name="description" content="Catálogo y pedidos - Panadería Nueva Río D'or">
   <title>Nueva Río D'or - Pedidos</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="assets/styles/styles.css?v=1770851993189">
+  <link rel="stylesheet" href="assets/styles/styles.css?v=1770896635011">
   <meta name="theme-color" content="#dc2626">
-  <link rel="shortcut icon" type="image/png" href="assets/icons/icon-192.png?v=1770851993189">
-  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=1770851993189">
-  <link rel="apple-touch-icon" href="assets/icons/icon-192.png?v=1770851993189">
-  <script>window.CATALOG_CACHE_VERSION = '1770851993189';</script>
+  <link rel="manifest" href="manifest.json">
+  <link rel="shortcut icon" type="image/png" href="assets/icons/icon-192.png?v=1770896635011">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=1770896635011">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png?v=1770896635011">
+  <script>window.CATALOG_CACHE_VERSION = '1770896635011';</script>
 
   <!-- Force cache reload with version parameter in URL -->
   <script>
@@ -54,6 +55,7 @@
             <p id="header-delivery-info" class="text-xs text-gray-600 mt-0.5">-</p>
           </div>
         </a>
+        <a href="#" id="pwa-install-link" class="hidden flex-shrink-0 text-sm font-medium text-red-600 hover:text-red-700 px-2 py-1" title="Instalar como app">Instalar app</a>
         <a href="#" id="nav-cart" class="flex-shrink-0 flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
           Mi pedido <span id="cart-count" class="hidden ml-1 bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-xs font-bold">0</span>
@@ -201,17 +203,79 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/gh/yosbany/nrd-data-access@main/dist/nrd-data-access.js"></script>
-  <script>window.nrd = new NRDDataAccess();</script>
-  <script src="modules/storage.js?v=1770851993189"></script>
-  <script src="modules/cart.js?v=1770851993189"></script>
-  <script src="modules/catalog-config.js?v=1770851993189"></script>
-  <script src="views/home/home.js?v=1770851993189"></script>
-  <script src="views/catalog/catalog.js?v=1770851993189"></script>
-  <script src="views/product-detail/product-detail.js?v=1770851993189"></script>
-  <script src="views/cart/cart.js?v=1770851993189"></script>
-  <script src="views/checkout/checkout.js?v=1770851993189"></script>
-  <script src="views/success/success.js?v=1770851993189"></script>
-  <script src="app.js?v=1770851993189"></script>
+  <!-- NRD Data Access (misma lógica que nrd-pedidos: local en desarrollo, CDN en producción) -->
+  <script>
+    var _nrdSrc = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '0.0.0.0')
+      ? '/nrd-data-access/dist/nrd-data-access.js'
+      : 'https://cdn.jsdelivr.net/gh/yosbany/nrd-data-access@main/dist/nrd-data-access.js';
+    document.write('<script src="' + _nrdSrc + '"><\/script>');
+  </script>
+  <script>
+    window.nrd = typeof NRDDataAccess !== 'undefined' ? new NRDDataAccess() : null;
+    if (!window.nrd) console.error('NRDDataAccess no cargó. Verifica la ruta a nrd-data-access.');
+  </script>
+  <script src="modules/storage.js?v=1770896635011"></script>
+  <script src="modules/cart.js?v=1770896635011"></script>
+  <script src="modules/catalog-config.js?v=1770896635011"></script>
+  <script src="views/home/home.js?v=1770896635011"></script>
+  <script src="views/catalog/catalog.js?v=1770896635011"></script>
+  <script src="views/product-detail/product-detail.js?v=1770896635011"></script>
+  <script src="views/cart/cart.js?v=1770896635011"></script>
+  <script src="views/checkout/checkout.js?v=1770896635011"></script>
+  <script src="views/success/success.js?v=1770896635011"></script>
+  <script src="app.js?v=1770896635011"></script>
+  <script>
+    (function () {
+      var installLink = document.getElementById('pwa-install-link');
+      var deferredPrompt = null;
+      var base = document.querySelector('base');
+      var basePath = base ? base.getAttribute('href') : '/nrd-catalogo/';
+      if (!basePath.endsWith('/')) basePath += '/';
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register(basePath + 'service-worker.js').catch(function (err) {
+          console.warn('Service worker no registrado:', err);
+        });
+      }
+
+      function hideInstallLink() {
+        if (installLink) installLink.classList.add('hidden');
+      }
+
+      if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+        hideInstallLink();
+      }
+
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        if (installLink) installLink.classList.remove('hidden');
+      });
+
+      if (installLink) {
+        installLink.addEventListener('click', function (e) {
+          e.preventDefault();
+          if (!deferredPrompt) {
+            var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            var msg = isIOS
+              ? 'Toca "Compartir" y luego "Agregar a pantalla de inicio".'
+              : 'Abre el menú del navegador (⋮) y elige "Instalar app" o "Agregar a pantalla de inicio".';
+            if (window.alert) window.alert(msg);
+            return;
+          }
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then(function (choice) {
+            if (choice.outcome === 'accepted') deferredPrompt = null;
+            hideInstallLink();
+          }).catch(hideInstallLink);
+        });
+      }
+
+      window.addEventListener('appinstalled', function () {
+        deferredPrompt = null;
+        hideInstallLink();
+      });
+    })();
+  </script>
 </body>
 </html>

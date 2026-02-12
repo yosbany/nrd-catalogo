@@ -12,8 +12,9 @@
     const path = (typeof window.getProductImagePath === 'function' ? window.getProductImagePath(p) : (p && p.imagePath) ? p.imagePath.trim() : '') || '';
     const raw = path ? (path.startsWith('assets/') || path.startsWith('/') ? path : 'assets/' + path) : (typeof window.getDefaultProductImage === 'function' ? window.getDefaultProductImage() : 'assets/icons/icon-192.png');
     const src = typeof window.assetUrl === 'function' ? window.assetUrl(raw) : raw;
+    const fallback = (typeof window.getDefaultProductImageUrl === 'function' ? window.getDefaultProductImageUrl() : 'assets/icons/icon-192.png');
     const displayName = typeof window.getProductDisplayName === 'function' ? window.getProductDisplayName(p) : (p.name || '');
-    return `<img src="${escapeHtml(src)}" alt="${escapeHtml(displayName)}" class="w-full aspect-square object-cover bg-gray-100 rounded-none">`;
+    return `<img src="${escapeHtml(src)}" alt="${escapeHtml(displayName)}" class="w-full aspect-square object-cover bg-gray-100 rounded-none" data-fallback="${escapeHtml(fallback)}" onerror="this.onerror=null;var f=this.getAttribute('data-fallback');if(f)this.src=f;">`;
   }
 
   function getProductTags(p) {

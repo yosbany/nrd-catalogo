@@ -138,16 +138,16 @@
     itemsEl.innerHTML = '';
     items.forEach((item, idx) => {
       const row = document.createElement('div');
-      row.className = 'flex items-center justify-between gap-2 p-3 bg-white border border-gray-200';
-      const key = item.variantId ? `${item.productId}_${item.variantId}` : item.productId;
+      row.className = 'flex items-center gap-3 p-3 bg-white border border-gray-200';
       const notesKey = item.notes || '';
       row.innerHTML = `
+        <div class="w-14 h-14 flex-shrink-0 overflow-hidden bg-gray-100 rounded">${cartItemImageHtml(item)}</div>
         <div class="flex-1 min-w-0">
           <p class="font-medium text-gray-900 truncate">${escapeHtml(item.productName)}</p>
           ${notesKey ? `<p class="text-xs text-gray-500">${escapeHtml(notesKey)}</p>` : ''}
           <p class="text-sm text-gray-600">${formatCurrency(item.price)} × ${item.quantity}</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-shrink-0">
           <button type="button" class="cart-qty-minus w-8 h-8 border border-gray-300 leading-none" data-idx="${idx}">−</button>
           <span class="cart-qty w-6 text-center">${item.quantity}</span>
           <button type="button" class="cart-qty-plus w-8 h-8 border border-gray-300 leading-none" data-idx="${idx}">+</button>
@@ -191,6 +191,57 @@
       checkoutBtn.classList.toggle('opacity-50', !canCheckout);
       checkoutBtn.classList.toggle('cursor-not-allowed', !canCheckout);
     }
+
+    const suggestionsEl = document.getElementById('cart-suggestions');
+    const suggestionsSection = document.getElementById('cart-suggestions-section');
+    if (suggestionsEl && suggestionsSection) {
+      const inCartSkus = new Set(items.map((i) => (i.variantId || i.productId || '').toString().trim()).filter(Boolean));
+      const allProducts = typeof window.getProducts === 'function' ? window.getProducts() : [];
+      const suggested = (Array.isArray(allProducts) ? allProducts : [])
+        .filter((p) => {
+          const sku = (p.sku || p.id || '').toString().trim();
+          return sku && !inCartSkus.has(sku) && (p.active !== false);
+        })
+        .slice(0, 16);
+      if (suggested.length === 0) {
+        suggestionsSection.classList.add('hidden');
+        suggestionsEl.innerHTML = '';
+      } else {
+        suggestionsSection.classList.remove('hidden');
+        const productWithSku = (p) => (p && (p.sku || p.id) ? { ...p, sku: (p.sku || p.id).toString() } : p);
+        const getPath = (p) => (typeof window.getProductImagePath === 'function' ? window.getProductImagePath(productWithSku(p)) : (p && p.imagePath) || '') || '';
+        const getName = (p) => (typeof window.getProductDisplayName === 'function' ? window.getProductDisplayName(productWithSku(p)) : (p && p.name)) || '';
+        suggestionsEl.innerHTML = suggested
+          .map((p) => {
+            const path = getPath(p);
+            const raw = path ? (path.startsWith('assets/') || path.startsWith('/') ? path : 'assets/' + path) : 'assets/icons/icon-192.png';
+            const src = typeof window.assetUrl === 'function' ? window.assetUrl(raw) : raw;
+            const fallback = typeof window.getDefaultProductImageUrl === 'function' ? window.getDefaultProductImageUrl() : 'assets/icons/icon-192.png';
+            const name = escapeHtml(getName(p));
+            const price = formatCurrency(p.price != null ? p.price : 0);
+            return (
+              '<button type="button" class="cart-suggestion-card flex-shrink-0 w-28 snap-start text-left rounded border border-gray-200 overflow-hidden bg-white hover:border-red-300 hover:shadow transition-colors" data-product-id="' +
+              escapeHtml((p.id || p.sku || '').toString()) +
+              '">' +
+              '<div class="w-full aspect-square bg-gray-100 overflow-hidden">' +
+              '<img src="' + escapeHtml(src) + '" alt="" class="w-full h-full object-cover" data-fallback="' + escapeHtml(fallback) + '" onerror="this.onerror=null;var f=this.getAttribute(\'data-fallback\');if(f)this.src=f;">' +
+              '</div>' +
+              '<div class="p-2">' +
+              '<p class="text-xs font-medium text-gray-900 line-clamp-2">' + name + '</p>' +
+              '<p class="text-xs text-red-600 font-medium mt-0.5">' + price + '</p>' +
+              '</div></button>'
+            );
+          })
+          .join('');
+        suggestionsEl.querySelectorAll('.cart-suggestion-card').forEach((btn) => {
+          const id = btn.dataset.productId;
+          const product = suggested.find((p) => (p.id || p.sku || '').toString() === id);
+          if (product && typeof window.showProductDetail === 'function') {
+            btn.addEventListener('click', () => window.showProductDetail(product));
+          }
+        });
+      }
+    }
   }
 
   function escapeHtml(s) {
@@ -198,6 +249,16 @@
     const div = document.createElement('div');
     div.textContent = s;
     return div.innerHTML;
+  }
+
+  function cartItemImageHtml(item) {
+    const sku = (item.variantId || item.productId || '').trim();
+    const p = sku ? { sku } : null;
+    const path = (typeof window.getProductImagePath === 'function' ? window.getProductImagePath(p) : '') || '';
+    const raw = path ? (path.startsWith('assets/') || path.startsWith('/') ? path : 'assets/' + path) : (typeof window.getDefaultProductImage === 'function' ? window.getDefaultProductImage() : 'assets/icons/icon-192.png');
+    const src = typeof window.assetUrl === 'function' ? window.assetUrl(raw) : raw;
+    const fallback = (typeof window.getDefaultProductImageUrl === 'function' ? window.getDefaultProductImageUrl() : 'assets/icons/icon-192.png');
+    return '<img src="' + escapeHtml(src) + '" alt="" class="w-full h-full object-cover bg-gray-100" data-fallback="' + escapeHtml(fallback) + '" onerror="this.onerror=null;var f=this.getAttribute(\'data-fallback\');if(f)this.src=f;">';
   }
 
   window.initCart = function () {

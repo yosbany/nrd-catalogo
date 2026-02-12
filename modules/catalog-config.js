@@ -218,7 +218,7 @@ function getDisplayProducts(products) {
     if (parentSku) {
       if (!groups[parentSku]) {
         groups[parentSku] = {
-          product: { ...p, sku: parentSku, id: p.id || parentSku },
+          product: { ...p, sku: parentSku, id: parentSku },
           variants: []
         };
       }
@@ -233,7 +233,12 @@ function getDisplayProducts(products) {
     if (!catalogSkus.has(g.product.sku)) continue;
     result.push({ ...g.product, variants: g.variants });
   }
-  return [...result, ...standalones];
+  const standaloneSkus = new Set(Object.keys(groups));
+  const filteredStandalones = standalones.filter((s) => {
+    const sSku = (s.sku || s.id || '').trim();
+    return !standaloneSkus.has(sSku);
+  });
+  return [...result, ...filteredStandalones];
 }
 
 function getProductCategoryId(product) {

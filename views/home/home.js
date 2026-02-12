@@ -171,7 +171,7 @@
     if (!container) return;
     container.innerHTML = '';
 
-    const useSections = categoryId === 'todos' && list.length > 0 && !sortByPriceAsc;
+    const useSections = categoryId === 'todos' && list.length > 0;
     if (useSections) {
       const sections = groupProductsBySection(list);
       sections.forEach((sec) => {

@@ -233,8 +233,8 @@
       const v = getSelectedVariant();
       const finalPrice = getPrice();
       const productName = (typeof window.getProductDisplayName === 'function' ? window.getProductDisplayName(product) : (product.name || '')) || '';
-      const variantId = v ? (v.id || v.name) : null;
-      const variantName = v ? v.name : null;
+      const variantId = v ? getVariantKey(v) : null;
+      const variantName = v ? getVariantLabel(v) : null;
       window.cart.add(product.id, productName, finalPrice, qty, { variantId, variantName, notes });
       if (typeof window.setLastAddedProductToStorage === 'function') {
         window.setLastAddedProductToStorage({ productId: product.id, variantId });

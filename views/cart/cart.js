@@ -138,20 +138,23 @@
     itemsEl.innerHTML = '';
     items.forEach((item, idx) => {
       const row = document.createElement('div');
-      row.className = 'flex items-center gap-3 p-3 bg-white border border-gray-200';
+      row.className = 'flex items-center gap-2 py-2 px-2 sm:px-3 bg-white border border-gray-200';
       const notesKey = item.notes || '';
+      const trashSvg = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
       row.innerHTML = `
-        <div class="w-14 h-14 flex-shrink-0 overflow-hidden bg-gray-100 rounded">${cartItemImageHtml(item)}</div>
+        <div class="w-16 flex-shrink-0 self-stretch min-h-[4rem] overflow-hidden bg-gray-100 rounded flex">${cartItemImageHtml(item)}</div>
         <div class="flex-1 min-w-0">
-          <p class="font-medium text-gray-900 truncate">${escapeHtml(item.productName)}</p>
+          <p class="font-medium text-gray-900 break-words">${escapeHtml(item.productName)}</p>
           ${notesKey ? `<p class="text-xs text-gray-500">${escapeHtml(notesKey)}</p>` : ''}
-          <p class="text-sm text-gray-600">${formatCurrency(item.price)} × ${item.quantity}</p>
+          <p class="text-sm text-gray-600">${formatCurrency(item.price)} × ${item.quantity} = <span class="font-bold">${formatCurrency((item.price || 0) * (item.quantity || 0))}</span></p>
         </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
-          <button type="button" class="cart-qty-minus w-8 h-8 border border-gray-300 leading-none" data-idx="${idx}">−</button>
-          <span class="cart-qty w-6 text-center">${item.quantity}</span>
-          <button type="button" class="cart-qty-plus w-8 h-8 border border-gray-300 leading-none" data-idx="${idx}">+</button>
-          <button type="button" class="cart-remove text-red-600 text-sm underline" data-idx="${idx}">Quitar</button>
+        <div class="flex items-center gap-0.5 flex-shrink-0">
+          <div class="flex items-center rounded-lg border border-gray-300 overflow-hidden">
+            <button type="button" class="cart-qty-minus w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-700 text-lg font-light" data-idx="${idx}">−</button>
+            <span class="cart-qty w-8 text-center py-1 text-sm border-x border-gray-300 bg-white">${item.quantity}</span>
+            <button type="button" class="cart-qty-plus w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-700 text-lg font-light" data-idx="${idx}">+</button>
+          </div>
+          <button type="button" class="cart-remove w-8 h-8 flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-red-50 rounded -ml-px" data-idx="${idx}" title="Eliminar">${trashSvg}</button>
         </div>
       `;
       row.querySelector('.cart-qty-minus').onclick = () => {
@@ -186,7 +189,8 @@
     if (checkoutBtn) {
       const hasItems = items.length > 0;
       const meetsMinimum = minimum <= 0 || subtotal >= minimum;
-      const canCheckout = hasItems && meetsMinimum;
+      const storeOpen = typeof window.isStoreOpen === 'function' ? window.isStoreOpen() : true;
+      const canCheckout = hasItems && meetsMinimum && storeOpen;
       checkoutBtn.disabled = !canCheckout;
       checkoutBtn.classList.toggle('opacity-50', !canCheckout);
       checkoutBtn.classList.toggle('cursor-not-allowed', !canCheckout);
@@ -194,50 +198,84 @@
 
     const suggestionsEl = document.getElementById('cart-suggestions');
     const suggestionsSection = document.getElementById('cart-suggestions-section');
+    const suggestionsSubtotalEl = document.getElementById('cart-suggestions-subtotal');
+    if (suggestionsSubtotalEl) suggestionsSubtotalEl.textContent = formatCurrency(subtotal);
+
     if (suggestionsEl && suggestionsSection) {
-      const inCartSkus = new Set(items.map((i) => (i.variantId || i.productId || '').toString().trim()).filter(Boolean));
+      const config = window.getCatalogConfig ? window.getCatalogConfig() : {};
+      const catalogProducts = config.products || {};
       const allProducts = typeof window.getProducts === 'function' ? window.getProducts() : [];
-      const suggested = (Array.isArray(allProducts) ? allProducts : [])
-        .filter((p) => {
-          const sku = (p.sku || p.id || '').toString().trim();
-          return sku && !inCartSkus.has(sku) && (p.active !== false);
-        })
-        .slice(0, 16);
+      const getProductBySku = (sku) => (Array.isArray(allProducts) ? allProducts.find((p) => (p.sku || p.id || '').toString().trim() === sku) : null);
+      function cartItemToCatalogSku(item) {
+        const pid = (item.productId || '').toString().trim();
+        const vid = (item.variantId || '').toString().trim();
+        const productFromApi = Array.isArray(allProducts) ? allProducts.find((p) => (p.id || '').toString() === pid || (p.sku || '').toString() === pid) : null;
+        const productSku = productFromApi ? (productFromApi.sku || productFromApi.id || '').toString().trim() : pid;
+        const catalogSku = (typeof window.getOrderProductId === 'function' ? window.getOrderProductId(productSku, vid) : null) || (vid || productSku);
+        return (catalogSku || productSku || pid || vid).trim() || '';
+      }
+      const skusInCart = new Set(items.map(cartItemToCatalogSku).filter(Boolean));
+      const variantToParent = typeof window.getDisplayProducts !== 'function' ? {} : (() => {
+        const display = window.getDisplayProducts(allProducts || []);
+        const map = {};
+        (display || []).forEach((g) => {
+          if (g.variants && g.variants.length) {
+            const parentSku = (g.sku || g.id || '').toString().trim();
+            g.variants.forEach((v) => { map[(v.sku || v.id || '').toString().trim()] = parentSku; });
+          }
+        });
+        return map;
+      })();
+      const inCartCatalogSkus = new Set(skusInCart);
+      skusInCart.forEach((sku) => {
+        const parent = variantToParent[sku];
+        if (parent) inCartCatalogSkus.add(parent);
+      });
+
+      const suggested = Object.entries(catalogProducts)
+        .filter(([sku, cfg]) => cfg && cfg.active !== false && sku && !inCartCatalogSkus.has(sku.trim()))
+        .slice(0, 16)
+        .map(([sku, cfg]) => {
+          const skuTrim = sku.trim();
+          const product = getProductBySku(skuTrim);
+          const productForDisplay = product ? { ...product, sku: product.sku || product.id || skuTrim } : { sku: skuTrim, name: (cfg.name || '').trim(), price: 0 };
+          const name = (typeof window.getProductDisplayName === 'function' ? window.getProductDisplayName(productForDisplay) : (cfg.name || '').trim()) || (product && (product.name || '').trim()) || skuTrim;
+          const price = product && product.price != null ? product.price : 0;
+          return { sku: skuTrim, name, price, product: product || productForDisplay };
+        });
+
       if (suggested.length === 0) {
         suggestionsSection.classList.add('hidden');
         suggestionsEl.innerHTML = '';
       } else {
         suggestionsSection.classList.remove('hidden');
-        const productWithSku = (p) => (p && (p.sku || p.id) ? { ...p, sku: (p.sku || p.id).toString() } : p);
-        const getPath = (p) => (typeof window.getProductImagePath === 'function' ? window.getProductImagePath(productWithSku(p)) : (p && p.imagePath) || '') || '';
-        const getName = (p) => (typeof window.getProductDisplayName === 'function' ? window.getProductDisplayName(productWithSku(p)) : (p && p.name)) || '';
         suggestionsEl.innerHTML = suggested
-          .map((p) => {
-            const path = getPath(p);
+          .map((item) => {
+            const path = typeof window.getProductImagePath === 'function' ? window.getProductImagePath(item.product) : '';
             const raw = path ? (path.startsWith('assets/') || path.startsWith('/') ? path : 'assets/' + path) : 'assets/icons/icon-192.png';
             const src = typeof window.assetUrl === 'function' ? window.assetUrl(raw) : raw;
             const fallback = typeof window.getDefaultProductImageUrl === 'function' ? window.getDefaultProductImageUrl() : 'assets/icons/icon-192.png';
-            const name = escapeHtml(getName(p));
-            const price = formatCurrency(p.price != null ? p.price : 0);
+            const name = escapeHtml(item.name);
+            const price = formatCurrency(item.price);
             return (
-              '<button type="button" class="cart-suggestion-card flex-shrink-0 w-28 snap-start text-left rounded border border-gray-200 overflow-hidden bg-white hover:border-red-300 hover:shadow transition-colors" data-product-id="' +
-              escapeHtml((p.id || p.sku || '').toString()) +
+              '<button type="button" class="cart-suggestion-card flex-shrink-0 w-28 snap-start text-left rounded border border-gray-200 overflow-hidden bg-white hover:border-red-300 hover:shadow transition-colors" data-sku="' +
+              escapeHtml(item.sku) +
               '">' +
               '<div class="w-full aspect-square bg-gray-100 overflow-hidden">' +
               '<img src="' + escapeHtml(src) + '" alt="" class="w-full h-full object-cover" data-fallback="' + escapeHtml(fallback) + '" onerror="this.onerror=null;var f=this.getAttribute(\'data-fallback\');if(f)this.src=f;">' +
               '</div>' +
-              '<div class="p-2">' +
-              '<p class="text-xs font-medium text-gray-900 line-clamp-2">' + name + '</p>' +
-              '<p class="text-xs text-red-600 font-medium mt-0.5">' + price + '</p>' +
+              '<div class="p-1.5">' +
+              '<p class="text-[10px] font-medium text-gray-900 leading-tight break-words">' + name + '</p>' +
+              '<p class="text-[10px] text-red-600 font-medium mt-0.5">' + price + '</p>' +
               '</div></button>'
             );
           })
           .join('');
         suggestionsEl.querySelectorAll('.cart-suggestion-card').forEach((btn) => {
-          const id = btn.dataset.productId;
-          const product = suggested.find((p) => (p.id || p.sku || '').toString() === id);
-          if (product && typeof window.showProductDetail === 'function') {
-            btn.addEventListener('click', () => window.showProductDetail(product));
+          const sku = btn.dataset.sku;
+          const item = suggested.find((s) => s.sku === sku);
+          if (item && typeof window.showProductDetail === 'function') {
+            btn.addEventListener('click', () => window.showProductDetail(item.product));
           }
         });
       }
@@ -252,7 +290,13 @@
   }
 
   function cartItemImageHtml(item) {
-    const sku = (item.variantId || item.productId || '').trim();
+    const allProducts = typeof window.getProducts === 'function' ? window.getProducts() : [];
+    const pid = (item.productId || '').toString().trim();
+    const vid = (item.variantId || '').toString().trim();
+    const productFromApi = Array.isArray(allProducts) ? allProducts.find((p) => (p.id || '').toString() === pid || (p.sku || '').toString() === pid) : null;
+    const productSku = productFromApi ? (productFromApi.sku || productFromApi.id || '').toString().trim() : pid;
+    const catalogSku = (typeof window.getOrderProductId === 'function' ? window.getOrderProductId(productSku, vid) : null) || (vid || productSku);
+    const sku = (catalogSku || productSku || pid || vid).trim() || '';
     const p = sku ? { sku } : null;
     const path = (typeof window.getProductImagePath === 'function' ? window.getProductImagePath(p) : '') || '';
     const raw = path ? (path.startsWith('assets/') || path.startsWith('/') ? path : 'assets/' + path) : (typeof window.getDefaultProductImage === 'function' ? window.getDefaultProductImage() : 'assets/icons/icon-192.png');
@@ -261,6 +305,36 @@
     return '<img src="' + escapeHtml(src) + '" alt="" class="w-full h-full object-cover bg-gray-100" data-fallback="' + escapeHtml(fallback) + '" onerror="this.onerror=null;var f=this.getAttribute(\'data-fallback\');if(f)this.src=f;">';
   }
 
+  function resolveCartItemToCatalogSku(item) {
+    const allProducts = typeof window.getProducts === 'function' ? window.getProducts() : [];
+    const pid = (item.productId || '').toString().trim();
+    const vid = (item.variantId || '').toString().trim();
+    const productFromApi = Array.isArray(allProducts) ? allProducts.find((p) => (p.id || '').toString() === pid || (p.sku || '').toString() === pid) : null;
+    const productSku = productFromApi ? (productFromApi.sku || productFromApi.id || '').toString().trim() : pid;
+    const catalogSku = (typeof window.getOrderProductId === 'function' ? window.getOrderProductId(productSku, vid) : null) || (vid || productSku);
+    return (catalogSku || productSku || pid || vid).trim() || '';
+  }
+
+  window.getCartQuantityForProduct = function (productSku) {
+    const sku = (productSku || '').toString().trim();
+    if (!sku || !window.cart || !window.cart.items.length) return 0;
+    const allProducts = typeof window.getProducts === 'function' ? window.getProducts() : [];
+    const display = typeof window.getDisplayProducts === 'function' ? window.getDisplayProducts(allProducts || []) : [];
+    const variantToParent = {};
+    (display || []).forEach((g) => {
+      if (g.variants && g.variants.length) {
+        const parentSku = (g.sku || g.id || '').toString().trim();
+        g.variants.forEach((v) => { variantToParent[(v.sku || v.id || '').toString().trim()] = parentSku; });
+      }
+    });
+    return window.cart.items.reduce((total, item) => {
+      const resolved = resolveCartItemToCatalogSku(item);
+      if (!resolved) return total;
+      if (resolved === sku || variantToParent[resolved] === sku) return total + (item.quantity || 0);
+      return total;
+    }, 0);
+  };
+
   window.initCart = function () {
     document.getElementById('cart-continue').addEventListener('click', (e) => {
       e.preventDefault();
@@ -268,6 +342,10 @@
     });
     document.getElementById('cart-checkout').addEventListener('click', () => {
       if (!window.cart || window.cart.items.length === 0) return;
+      if (typeof window.isStoreOpen === 'function' && !window.isStoreOpen()) {
+        alert('El local está cerrado en este momento. No se pueden finalizar pedidos hasta que abramos.');
+        return;
+      }
       const config = window.getCatalogConfig ? window.getCatalogConfig() : {};
       const minimum = config.minimumForShipping || 0;
       const subtotal = window.cart.getSubtotal();

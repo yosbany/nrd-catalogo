@@ -85,8 +85,18 @@
 
   window.renderCheckout = function () {
     preloadFromLastOrder();
+    const storeOpen = typeof window.isStoreOpen === 'function' ? window.isStoreOpen() : true;
+    const confirmBtn = document.getElementById('checkout-confirm-btn');
+    if (confirmBtn) {
+      confirmBtn.disabled = !storeOpen;
+      confirmBtn.classList.toggle('opacity-50', !storeOpen);
+      confirmBtn.classList.toggle('cursor-not-allowed', !storeOpen);
+      confirmBtn.textContent = storeOpen ? 'Confirmar pedido' : 'Local cerrado — no se pueden finalizar pedidos';
+    }
     const isEnvio = getDeliveryType() === 'envio';
     document.getElementById('checkout-address-wrap').classList.toggle('hidden', !isEnvio);
+    const retiroTimeWrap = document.getElementById('checkout-retiro-time-wrap');
+    if (retiroTimeWrap) retiroTimeWrap.classList.toggle('hidden', isEnvio);
     const payWrap = document.getElementById('checkout-payment-wrap');
     const payRequired = document.getElementById('checkout-payment-required');
     if (payWrap) payWrap.classList.toggle('hidden', !isEnvio);
@@ -102,6 +112,8 @@
       r.addEventListener('change', () => {
         const isEnvio = r.value === 'envio';
         document.getElementById('checkout-address-wrap').classList.toggle('hidden', !isEnvio);
+        const retiroTimeWrap = document.getElementById('checkout-retiro-time-wrap');
+        if (retiroTimeWrap) retiroTimeWrap.classList.toggle('hidden', isEnvio);
         const payWrap = document.getElementById('checkout-payment-wrap');
         const payRequired = document.getElementById('checkout-payment-required');
         if (payWrap) payWrap.classList.toggle('hidden', !isEnvio);
@@ -119,6 +131,8 @@
         if (radio) radio.checked = true;
         const isEnvio = type === 'envio';
         document.getElementById('checkout-address-wrap').classList.toggle('hidden', !isEnvio);
+        const retiroTimeWrap = document.getElementById('checkout-retiro-time-wrap');
+        if (retiroTimeWrap) retiroTimeWrap.classList.toggle('hidden', isEnvio);
         const payWrap = document.getElementById('checkout-payment-wrap');
         const payRequired = document.getElementById('checkout-payment-required');
         if (payWrap) payWrap.classList.toggle('hidden', !isEnvio);
@@ -135,6 +149,10 @@
 
     document.getElementById('checkout-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (typeof window.isStoreOpen === 'function' && !window.isStoreOpen()) {
+        alert('El local está cerrado en este momento. No se pueden finalizar pedidos hasta que abramos.');
+        return;
+      }
       const name = document.getElementById('checkout-name').value.trim();
       const phone = document.getElementById('checkout-phone').value.trim();
       if (!name || !phone) return;
@@ -156,6 +174,7 @@
         return;
       }
       const notes = document.getElementById('checkout-notes').value.trim();
+      const retiroTime = type === 'retiro' ? (document.getElementById('checkout-retiro-time') && document.getElementById('checkout-retiro-time').value) || '' : '';
       const cashNote = payment && payment.value === 'efectivo' ? document.getElementById('checkout-cash').value.trim() : '';
       const nrd = window.nrd;
       if (!nrd || !nrd.orders) {
@@ -166,7 +185,7 @@
       const total = subtotal + shipping;
       const orderNotes = [
         notes,
-        type === 'envio' ? 'Envío: ' + address : 'Retiro en local',
+        type === 'envio' ? 'Envío: ' + address : ('Retiro en local' + (retiroTime ? ' - Horario: ' + retiroTime : '')),
         type === 'envio' && payment ? ('Pago: ' + (payment.value === 'efectivo' ? 'Efectivo' + (cashNote ? ' (paga con $' + cashNote + ')' : '') : payment.value === 'pos' ? 'POS' : 'Mercado Pago')) : null,
         'Cliente: ' + name + ' - Tel: ' + phone
       ].filter(Boolean).join('\n');

@@ -10,7 +10,10 @@ const DEFAULT_CONFIG = {
   minimumForShipping: 200,
   estimatedMinutes: '30-45',
   brandName: "Nueva Río D'or",
-  tagline: 'Horneamos con sabor cubano'
+  tagline: 'Horneamos con sabor cubano',
+  storeOpenTime: '08:00',
+  storeCloseTime: '20:00',
+  storeManualOverride: null
 };
 
 let catalogState = { ...DEFAULT_CONFIG };
@@ -39,6 +42,44 @@ function setCatalogConfig(remote) {
   if (remote.estimatedMinutes != null) catalogState.estimatedMinutes = String(remote.estimatedMinutes);
   if (remote.brandName != null) catalogState.brandName = String(remote.brandName).trim() || DEFAULT_CONFIG.brandName;
   if (remote.tagline != null) catalogState.tagline = String(remote.tagline).trim() || DEFAULT_CONFIG.tagline;
+  if (remote.storeOpenTime != null) catalogState.storeOpenTime = String(remote.storeOpenTime).trim() || DEFAULT_CONFIG.storeOpenTime;
+  if (remote.storeCloseTime != null) catalogState.storeCloseTime = String(remote.storeCloseTime).trim() || DEFAULT_CONFIG.storeCloseTime;
+  if (remote.storeManualOverride !== undefined && remote.storeManualOverride !== null) {
+    const v = String(remote.storeManualOverride).toLowerCase();
+    catalogState.storeManualOverride = (v === 'open' || v === 'closed') ? v : null;
+  } else {
+    catalogState.storeManualOverride = null;
+  }
+}
+
+/**
+ * Indica si el local está abierto según horario y override manual.
+ * storeManualOverride: 'open' = siempre abierto, 'closed' = siempre cerrado, null = por horario.
+ */
+function isStoreOpen() {
+  const cfg = catalogState;
+  const override = (cfg.storeManualOverride || '').toLowerCase();
+  if (override === 'closed') return false;
+  if (override === 'open') return true;
+  const openStr = (cfg.storeOpenTime || '').trim() || '08:00';
+  const closeStr = (cfg.storeCloseTime || '').trim() || '20:00';
+  const parseHHMM = (s) => {
+    const m = String(s).match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return null;
+    const h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    if (h < 0 || h > 23 || min < 0 || min > 59) return null;
+    return h * 60 + min;
+  };
+  const openMin = parseHHMM(openStr);
+  const closeMin = parseHHMM(closeStr);
+  if (openMin == null || closeMin == null) return true;
+  const now = new Date();
+  const currentMin = now.getHours() * 60 + now.getMinutes();
+  if (openMin <= closeMin) {
+    return currentMin >= openMin && currentMin < closeMin;
+  }
+  return currentMin >= openMin || currentMin < closeMin;
 }
 
 function getProductConfig(sku) {
@@ -80,8 +121,16 @@ function getVariantToDisplayProduct() {
 
 function getProductImagePath(product) {
   if (!product) return '';
-  const cfg = getProductConfig(product.sku);
+  const sku = (product.sku || '').trim();
+  if (!sku) return (product.imagePath || '').trim() || '';
+  const cfg = getProductConfig(sku);
   if (cfg && cfg.image) return cfg.image;
+  const variantMap = getVariantToDisplayProduct();
+  const parentSku = variantMap[sku];
+  if (parentSku) {
+    const parentCfg = getProductConfig(parentSku);
+    if (parentCfg && parentCfg.image) return parentCfg.image;
+  }
   return (product.imagePath || '').trim() || '';
 }
 
@@ -242,3 +291,4 @@ window.getDefaultProductImage = () => DEFAULT_PRODUCT_IMAGE;
 window.getDefaultProductImageUrl = getDefaultProductImageUrl;
 window.assetUrl = assetUrl;
 window.setCatalogConfigFromCompany = setCatalogConfigFromCompany;
+window.isStoreOpen = isStoreOpen;

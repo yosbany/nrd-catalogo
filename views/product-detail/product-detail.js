@@ -33,16 +33,26 @@
     return variants.length > 0;
   }
 
-  function updateAddButton(addBtn, qty, total) {
+  function updateAddButton(addBtn, qty, total, needsSelection) {
     if (!addBtn) return;
+    if (needsSelection) {
+      addBtn.innerHTML = '<span class="flex-1 text-center text-sm">Seleccione opción</span>';
+      addBtn.disabled = true;
+      addBtn.classList.add('opacity-70', 'cursor-not-allowed');
+      return;
+    }
+    addBtn.disabled = false;
+    addBtn.classList.remove('opacity-70', 'cursor-not-allowed');
     addBtn.innerHTML = `
-      <span class="flex items-center justify-center w-8 h-8 rounded-full bg-white/25 text-white font-medium text-sm">${qty}</span>
-      <span class="flex-1 text-center">Agregar a mi pedido</span>
-      <span class="font-semibold">${formatCurrency(total)}</span>
+      <span class="flex items-center justify-center w-7 h-7 rounded-full bg-white/25 text-white font-medium text-xs">${qty}</span>
+      <span class="flex-1 text-center text-sm">Agregar a mi pedido</span>
+      <span class="font-semibold text-sm">${formatCurrency(total)}</span>
     `;
   }
 
-  window.showProductDetail = function (product) {
+  window.showProductDetail = function (product, opts) {
+    opts = opts && typeof opts === 'object' ? opts : {};
+    const openOptionsModal = !!opts.openOptions;
     const sku = (product && (product.sku || product.id || '')).trim();
     if (sku && typeof window.isProductActiveInCatalog === 'function' && !window.isProductActiveInCatalog(sku)) {
       if (typeof window.showView === 'function') window.showView('home');
@@ -69,8 +79,8 @@
     }
     const price = product.price != null ? product.price : 0;
     const hasVariants = variants.length > 0;
-    let selectedVariant = hasVariants ? variants[0] : null;
-    const priceDisplay = selectedVariant != null ? selectedVariant.price : price;
+    const selectedVariant = null;
+    const priceDisplay = price;
     const desc = (typeof window.getProductDescription === 'function' ? window.getProductDescription(product) : (product.description || (product.attributes && product.attributes.description) || '').trim());
     const optionLabel = (optCfg && optCfg.label) || 'Elegir opción *';
     const getVariantLabel = (v) => {
@@ -84,20 +94,20 @@
     };
 
     content.innerHTML = `
-      <div class="relative aspect-[4/3] overflow-hidden bg-gray-100 rounded-none">
+      <div class="relative aspect-[3/2] max-h-[40vh] overflow-hidden bg-gray-100 rounded-none">
         ${productImageHtml(product)}
-        <button type="button" id="product-back" class="absolute top-3 left-3 w-10 h-10 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 text-lg font-light">✕</button>
+        <button type="button" id="product-back" class="absolute top-2 left-2 w-9 h-9 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 text-base font-light">✕</button>
       </div>
-      <div class="px-4 pt-4 pb-2">
-        <h3 class="text-xl font-bold text-gray-900">${escapeHtml(typeof window.getProductDisplayName === 'function' ? window.getProductDisplayName(product) : (product.name || ''))}</h3>
-        ${desc ? `<p class="text-sm text-gray-600 mt-1">${escapeHtml(desc)}</p>` : ''}
-        <p id="product-price-display" class="text-xl font-bold text-gray-900 mt-2">${formatCurrency(priceDisplay)}</p>
+      <div class="px-3 pt-2 pb-1">
+        <h3 class="text-lg font-bold text-gray-900">${escapeHtml(typeof window.getProductDisplayName === 'function' ? window.getProductDisplayName(product) : (product.name || ''))}</h3>
+        ${desc ? `<p class="text-xs text-gray-600 mt-0.5 line-clamp-2">${escapeHtml(desc)}</p>` : ''}
+        <p id="product-price-display" class="text-lg font-bold text-gray-900 mt-1">${formatCurrency(priceDisplay)}</p>
         ${hasVariants ? `
-          <div class="mt-4 flex items-center justify-between p-3 border border-gray-300 rounded-lg bg-white">
-            <span class="text-sm font-semibold text-gray-900">${escapeHtml(optionLabel)}</span>
-            <button type="button" id="product-variant-btn" class="py-1.5 px-3 text-sm text-gray-600 border border-gray-300 rounded-full hover:bg-gray-50">Seleccionar</button>
+          <div class="mt-2 flex items-center justify-between p-2 border border-gray-300 rounded-lg bg-white">
+            <span class="text-xs font-semibold text-gray-900">${escapeHtml(optionLabel)}</span>
+            <button type="button" id="product-variant-btn" class="py-1 px-2.5 text-xs text-gray-600 border border-gray-300 rounded-full hover:bg-gray-50">Seleccione</button>
           </div>
-          <div id="product-option-modal" class="fixed inset-0 bg-black/50 z-50 p-4" style="display: none; align-items: center; justify-content: center;">
+          <div id="product-option-modal" class="fixed inset-0 bg-black/50 p-4 z-[100]" style="display: none; align-items: center; justify-content: center;">
             <div class="bg-white rounded-lg w-full max-w-sm shadow-xl">
               <div class="flex items-center gap-2 p-4 border-b border-gray-200">
                 <button type="button" id="product-option-modal-back" class="p-1 text-gray-600 hover:bg-gray-100 rounded">‹</button>
@@ -107,7 +117,7 @@
                 <p class="text-sm font-semibold text-gray-900 mb-3">Elige</p>
                 <div class="border border-gray-200 rounded-lg overflow-hidden">
                   ${variants.map((v, i) => `<label class="flex items-center gap-3 p-3 border-b border-gray-200 last:border-b-0 cursor-pointer hover:bg-gray-50 product-option-radio">
-                    <input type="radio" name="product-option-choice" value="${escapeHtml(String(v.id ?? v.sku ?? v.name ?? '').trim())}" data-price="${v.price != null ? v.price : 0}" class="text-red-600" ${i === 0 ? 'checked' : ''}>
+                    <input type="radio" name="product-option-choice" value="${escapeHtml(String(v.id ?? v.sku ?? v.name ?? '').trim())}" data-price="${v.price != null ? v.price : 0}" class="text-red-600">
                     <span class="text-gray-900">${escapeHtml(getVariantLabel(v))} - ${formatCurrency(v.price)}</span>
                   </label>`).join('')}
                 </div>
@@ -118,17 +128,17 @@
             </div>
           </div>
         ` : ''}
-        <div class="flex items-center justify-between mt-4">
-          <label class="text-sm font-semibold text-gray-900">Unidades</label>
+        <div class="flex items-center justify-between mt-2">
+          <label class="text-xs font-semibold text-gray-900">Unidades</label>
           <div class="flex items-center rounded-lg border border-gray-300 overflow-hidden">
-            <button type="button" id="product-qty-minus" class="w-10 h-10 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-700 text-xl font-light">−</button>
-            <input type="number" id="product-qty" min="1" value="1" class="w-12 text-center py-2 border-0 border-x border-gray-300 focus:outline-none focus:ring-0">
-            <button type="button" id="product-qty-plus" class="w-10 h-10 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-700 text-xl font-light">+</button>
+            <button type="button" id="product-qty-minus" class="w-9 h-9 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-700 text-lg font-light">−</button>
+            <input type="number" id="product-qty" min="1" value="1" class="w-10 text-center py-1.5 text-sm border-0 border-x border-gray-300 focus:outline-none focus:ring-0">
+            <button type="button" id="product-qty-plus" class="w-9 h-9 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-700 text-lg font-light">+</button>
           </div>
         </div>
-        <label class="block text-sm font-semibold text-gray-900 mt-4">Notas para este producto</label>
-        <textarea id="product-notes" maxlength="250" rows="3" placeholder="El local intentará seguirlas cuando lo prepare." class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"></textarea>
-        <p id="product-notes-counter" class="text-xs text-gray-500 mt-1 text-right">0/250</p>
+        <label class="block text-xs font-semibold text-gray-900 mt-2">Notas para este producto</label>
+        <textarea id="product-notes" maxlength="250" rows="2" placeholder="El local intentará seguirlas cuando lo prepare." class="mt-0.5 w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"></textarea>
+        <p id="product-notes-counter" class="text-[10px] text-gray-500 mt-0.5 text-right">0/250</p>
       </div>
     `;
 
@@ -148,14 +158,14 @@
     function getSelectedVariant() {
       if (!hasVariants) return null;
       const radio = content.querySelector('input[name="product-option-choice"]:checked');
-      if (!radio) return variants[0];
+      if (!radio) return null;
       const key = (radio.value || '').trim();
-      if (!key) return variants[0];
-      return variants.find((v) => getVariantKey(v) === key) || variants[0];
+      if (!key) return null;
+      return variants.find((v) => getVariantKey(v) === key) || null;
     }
     function updateVariantButton() {
       const v = getSelectedVariant();
-      if (variantBtn && v) variantBtn.textContent = getVariantLabel(v);
+      if (variantBtn) variantBtn.textContent = v ? getVariantLabel(v) : 'Seleccione';
     }
 
     if (variantBtn && optionModal) {
@@ -171,11 +181,17 @@
         const priceEl = content.querySelector('#product-price-display');
         if (v && priceEl) priceEl.textContent = formatCurrency(v.price);
         updateVariantButton();
-        updateAddButton(addBtn, getQuantity(), getPrice() * getQuantity());
+        updateAddButton(addBtn, getQuantity(), getPrice() * getQuantity(), hasVariants && !getSelectedVariant());
       });
     }
     content.querySelectorAll('input[name="product-option-choice"]').forEach((r) => {
-      r.addEventListener('change', () => { updateVariantButton(); });
+      r.addEventListener('change', () => {
+        updateVariantButton();
+        const priceEl = content.querySelector('#product-price-display');
+        const v = getSelectedVariant();
+        if (v && priceEl) priceEl.textContent = formatCurrency(v.price);
+        updateAddButton(addBtn, getQuantity(), getPrice() * getQuantity(), hasVariants && !getSelectedVariant());
+      });
     });
     updateVariantButton();
 
@@ -191,7 +207,7 @@
     function setQuantity(n) {
       const v = Math.max(1, n);
       if (qtyEl) qtyEl.value = String(v);
-      updateAddButton(addBtn, v, getPrice() * v);
+      updateAddButton(addBtn, v, getPrice() * v, hasVariants && !getSelectedVariant());
     }
     function getNotes() {
       return (notesEl?.value || '').trim();
@@ -205,10 +221,10 @@
     if (qtyMinus) qtyMinus.addEventListener('click', () => setQuantity(getQuantity() - 1));
     if (qtyPlus) qtyPlus.addEventListener('click', () => setQuantity(getQuantity() + 1));
     if (qtyEl) {
-      qtyEl.addEventListener('change', () => updateAddButton(addBtn, getQuantity(), getPrice() * getQuantity()));
+      qtyEl.addEventListener('change', () => updateAddButton(addBtn, getQuantity(), getPrice() * getQuantity(), hasVariants && !getSelectedVariant()));
     }
 
-    updateAddButton(addBtn, 1, getPrice());
+    updateAddButton(addBtn, 1, getPrice(), hasVariants && !getSelectedVariant());
 
     addBtn.onclick = () => {
       if (hasVariants && !getSelectedVariant()) return;
@@ -229,6 +245,13 @@
 
     document.getElementById('product-back').onclick = () => window.showView('home');
     window.showView('product');
+    if (openOptionsModal && hasVariants && optionModal) {
+      setTimeout(() => {
+        optionModal.style.display = 'flex';
+        optionModal.style.alignItems = 'center';
+        optionModal.style.justifyContent = 'center';
+      }, 50);
+    }
   };
 
   window.initProductDetail = function () {

@@ -1,8 +1,20 @@
 /**
- * Carrito de compra: ítems en memoria, subtotal, persistencia opcional en sessionStorage.
+ * Carrito de compra: ítems en memoria, persistencia en localStorage.
  */
 const cart = {
   items: [], // { productId, variantId?, productName, variantName?, quantity, price, notes? }
+
+  _load() {
+    if (typeof window.getCartFromStorage === 'function') {
+      const saved = window.getCartFromStorage();
+      this.items = Array.isArray(saved) ? saved : [];
+    }
+  },
+  _save() {
+    if (typeof window.setCartToStorage === 'function') {
+      window.setCartToStorage(this.items);
+    }
+  },
 
   add(productId, productName, price, quantity = 1, options = {}) {
     const variantId = options.variantId || null;
@@ -25,6 +37,7 @@ const cart = {
         notes
       });
     }
+    this._save();
     this._notify();
   },
 
@@ -34,6 +47,7 @@ const cart = {
     if (!item) return;
     item.quantity = Math.max(0, item.quantity + delta);
     if (item.quantity <= 0) this.remove(productId, variantId, notes);
+    this._save();
     this._notify();
   },
 
@@ -44,6 +58,7 @@ const cart = {
         (i.variantId || null) !== (variantId || null) ||
         (i.notes || '') !== (notes || '')
     );
+    this._save();
     this._notify();
   },
 
@@ -56,6 +71,21 @@ const cart = {
       return;
     }
     item.quantity = quantity;
+    this._save();
+    this._notify();
+  },
+
+  loadFromOrder(orderItems) {
+    this.items = (orderItems || []).map((i) => ({
+      productId: i.productId,
+      variantId: i.variantId || null,
+      productName: i.productName || '',
+      variantName: i.variantName || null,
+      quantity: i.quantity || 1,
+      price: i.price || 0,
+      notes: i.notes || ''
+    }));
+    this._save();
     this._notify();
   },
 
@@ -69,6 +99,7 @@ const cart = {
 
   clear() {
     this.items = [];
+    this._save();
     this._notify();
   },
 
@@ -81,4 +112,6 @@ const cart = {
   }
 };
 
+// Cargar carrito desde localStorage al iniciar
+cart._load();
 window.cart = cart;

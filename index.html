@@ -2,101 +2,132 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <base href="/nrd-catalogo/">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Catálogo y pedidos - Panadería Nueva Río D'or">
   <title>Nueva Río D'or - Pedidos</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="assets/styles/styles.css?v=1">
+  <link rel="stylesheet" href="assets/styles/styles.css?v=1770851993189">
   <meta name="theme-color" content="#dc2626">
-  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+  <link rel="shortcut icon" type="image/png" href="assets/icons/icon-192.png?v=1770851993189">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=1770851993189">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png?v=1770851993189">
+  <script>window.CATALOG_CACHE_VERSION = '1770851993189';</script>
+
+  <!-- Force cache reload with version parameter in URL -->
+  <script>
+    (function() {
+      const stylesheet = document.querySelector('link[href*="assets/styles/styles.css"]');
+      const versionMatch = stylesheet ? stylesheet.href.match(/[?&]v=(\d+)/) : null;
+      const currentVersion = versionMatch ? versionMatch[1] : Date.now();
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlVersion = urlParams.get('v');
+
+      if (urlVersion !== currentVersion) {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for (var reg of registrations) reg.unregister();
+          });
+        }
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            for (var name of names) caches.delete(name);
+          });
+        }
+        var url = new URL(window.location.href);
+        url.searchParams.set('v', currentVersion);
+        window.location.replace(url.toString());
+      }
+    })();
+  </script>
 </head>
-<body class="bg-gray-50 text-gray-900 font-sans antialiased min-h-screen">
+<body class="bg-gray-100 text-gray-900 font-sans antialiased min-h-screen">
   <div id="app" class="min-h-screen flex flex-col max-w-4xl mx-auto">
     <!-- Header -->
-    <header class="bg-red-600 text-white px-4 py-3 sticky top-0 z-20 shadow">
-      <div class="flex justify-between items-center">
-        <a href="#" id="nav-home" class="font-semibold text-lg tracking-tight">Nueva Río D'or</a>
-        <a href="#" id="nav-cart" class="relative px-3 py-1.5 rounded bg-white/20 hover:bg-white/30 transition-colors text-sm">
-          Mi pedido <span id="cart-count" class="hidden ml-1 bg-white text-red-600 rounded-full w-5 h-5 inline-flex items-center justify-center text-xs font-bold">0</span>
+    <header class="bg-red-50 border-b border-red-100 px-4 py-3 sticky top-0 z-20">
+      <div class="flex justify-between items-center gap-4">
+        <a href="#" id="nav-home" class="flex items-center gap-3 min-w-0 flex-1">
+          <img id="header-logo" src="assets/icons/icon-192.png" alt="" class="w-12 h-12 object-contain flex-shrink-0" loading="lazy">
+          <div class="min-w-0">
+            <h1 id="header-business-name" class="font-bold text-gray-900 text-base truncate">-</h1>
+            <p id="header-delivery-info" class="text-xs text-gray-600 mt-0.5">-</p>
+          </div>
+        </a>
+        <a href="#" id="nav-cart" class="flex-shrink-0 flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          Mi pedido <span id="cart-count" class="hidden ml-1 bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-xs font-bold">0</span>
         </a>
       </div>
     </header>
 
     <!-- Main content: views -->
-    <main class="flex-1 p-4 pb-8">
+    <main class="flex-1 p-4 pb-8 bg-white">
       <!-- Home -->
       <div id="view-home" class="view">
-        <div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded text-sm text-amber-900">
-          <p><strong>Tiempo estimado:</strong> <span id="home-time">30-45 min</span></p>
-          <p><strong>Envío:</strong> <span id="home-shipping">$ -</span></p>
-          <p><strong>Mínimo con envío:</strong> <span id="home-minimum">$ -</span></p>
-        </div>
         <div class="mb-4">
           <input type="search" id="home-search" placeholder="Buscar productos..." autocomplete="off"
-            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+            class="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
         </div>
-        <div class="mb-4">
-          <p class="text-xs uppercase tracking-wider text-gray-500 mb-2">Categorías</p>
-          <div id="home-categories" class="flex flex-wrap gap-2">
+        <div class="mb-4 border-b border-gray-200">
+          <div id="home-categories" class="flex gap-2 overflow-x-auto pb-2 -mb-px">
             <!-- filled by JS -->
           </div>
         </div>
-        <div id="home-products" class="grid gap-3 sm:grid-cols-2">
+        <div id="home-products" class="space-y-2">
           <!-- product cards filled by JS -->
         </div>
       </div>
 
       <!-- Product list (filtered by category) -->
       <div id="view-catalog" class="view hidden">
-        <div class="flex items-center gap-2 mb-4">
-          <button type="button" id="catalog-back" class="p-2 text-gray-600 hover:bg-gray-200 rounded">‹</button>
+        <div class="flex items-center gap-2 mb-4 border-b border-gray-200 pb-3">
+          <button type="button" id="catalog-back" class="p-2 text-gray-600 hover:bg-gray-100 border border-gray-300">‹</button>
           <h2 id="catalog-title" class="text-lg font-semibold">Productos</h2>
         </div>
-        <div id="catalog-products" class="grid gap-3 sm:grid-cols-2"></div>
+        <div id="catalog-products" class="space-y-2"></div>
       </div>
 
       <!-- Product detail -->
-      <div id="view-product" class="view hidden">
-        <div class="flex items-center gap-2 mb-4">
-          <button type="button" id="product-back" class="p-2 text-gray-600 hover:bg-gray-200 rounded">‹</button>
-          <span class="text-sm text-gray-500">Detalle</span>
+      <div id="view-product" class="view hidden -mx-4 -mt-4">
+        <div id="product-content" class="border-0 overflow-hidden">
+          <!-- filled by JS: image with close overlay, info, etc -->
         </div>
-        <div id="product-content" class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <!-- filled by JS -->
-        </div>
-        <div class="mt-4 flex gap-2">
-          <button type="button" id="product-add-cart" class="flex-1 py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors">
-            Agregar al pedido
+        <div class="mt-4 px-4">
+          <button type="button" id="product-add-cart" class="w-full py-3 px-4 bg-red-600 text-white font-medium hover:bg-red-700 transition-colors border border-red-700 flex items-center justify-between gap-3 rounded-lg">
+            <!-- filled by product-detail.js -->
           </button>
         </div>
       </div>
 
       <!-- Cart -->
       <div id="view-cart" class="view hidden">
-        <h2 class="text-lg font-semibold mb-4">Mi pedido</h2>
+        <h2 class="text-lg font-semibold mb-4 border-b border-gray-200 pb-3">Mi pedido</h2>
         <div id="cart-items" class="space-y-2 mb-4"></div>
-        <div id="cart-minimum-msg" class="hidden p-3 bg-amber-50 border border-amber-200 rounded text-sm text-amber-900 mb-4"></div>
-        <div class="border-t pt-4 mb-4">
+        <div id="cart-minimum-msg" class="hidden p-3 bg-red-50 border border-red-100 border-l-4 border-l-red-600 text-sm text-red-900 mb-4"></div>
+        <div class="border-t border-gray-200 pt-4 mb-4">
           <p class="flex justify-between text-gray-700"><span>Subtotal</span><span id="cart-subtotal">$ 0</span></p>
         </div>
-        <div class="flex gap-2">
-          <a href="#" id="cart-continue" class="flex-1 py-2.5 border border-gray-300 text-center rounded-lg hover:bg-gray-100">Seguir comprando</a>
-          <button type="button" id="cart-checkout" class="flex-1 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700">Finalizar pedido</button>
+        <div class="flex gap-2 mb-8">
+          <a href="#" id="cart-continue" class="flex-1 py-2.5 border border-gray-300 text-center hover:bg-gray-50 text-gray-700">Seguir comprando</a>
+          <button type="button" id="cart-checkout" class="flex-1 py-2.5 bg-red-600 text-white hover:bg-red-700 border border-red-700">Finalizar pedido</button>
         </div>
+        <div id="cart-active-order" class="hidden pt-4 mt-4 border-t border-gray-200"></div>
+        <div id="cart-last-orders" class="hidden pt-6 mt-6 border-t border-gray-200"></div>
       </div>
 
       <!-- Checkout -->
       <div id="view-checkout" class="view hidden">
-        <h2 class="text-lg font-semibold mb-4">Finalizar pedido</h2>
+        <h2 class="text-lg font-semibold mb-4 border-b border-gray-200 pb-3">Finalizar pedido</h2>
         <form id="checkout-form" class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de entrega</label>
             <div class="flex gap-2">
-              <label class="flex-1 flex items-center justify-center p-3 border-2 rounded-lg cursor-pointer checkout-type-option" data-type="retiro">
+              <label class="flex-1 flex items-center justify-center p-3 border-2 border-gray-300 cursor-pointer checkout-type-option" data-type="retiro">
                 <input type="radio" name="deliveryType" value="retiro" class="sr-only" checked>
                 <span>Retiro en local</span>
               </label>
-              <label class="flex-1 flex items-center justify-center p-3 border-2 rounded-lg cursor-pointer checkout-type-option" data-type="envio">
+              <label class="flex-1 flex items-center justify-center p-3 border-2 border-gray-300 cursor-pointer checkout-type-option" data-type="envio">
                 <input type="radio" name="deliveryType" value="envio" class="sr-only">
                 <span>Envío a domicilio</span>
               </label>
@@ -104,32 +135,32 @@
           </div>
           <div id="checkout-address-wrap" class="hidden">
             <label class="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
-            <input type="text" id="checkout-address" placeholder="Calle, número, referencia" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+            <input type="text" id="checkout-address" placeholder="Calle, número, referencia" class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-            <input type="text" id="checkout-name" required placeholder="Tu nombre" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+            <input type="text" id="checkout-name" required placeholder="Tu nombre" class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono *</label>
-            <input type="tel" id="checkout-phone" required placeholder="Ej: 099 123 456" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+            <input type="tel" id="checkout-phone" required placeholder="Ej: 099 123 456" class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones (opcional)</label>
-            <textarea id="checkout-notes" rows="2" placeholder="Indicaciones para tu pedido" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
+            <textarea id="checkout-notes" rows="2" placeholder="Indicaciones para tu pedido" class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"></textarea>
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Medio de pago *</label>
+          <div id="checkout-payment-wrap">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Medio de pago <span id="checkout-payment-required">*</span></label>
             <div class="space-y-2">
-              <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50">
+              <label class="flex items-center gap-2 p-2 border border-gray-300 cursor-pointer hover:bg-gray-50 checkout-payment-option">
                 <input type="radio" name="payment" value="efectivo" class="text-red-600">
                 <span>Efectivo</span>
               </label>
-              <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50">
+              <label class="flex items-center gap-2 p-2 border border-gray-300 cursor-pointer hover:bg-gray-50 checkout-payment-option">
                 <input type="radio" name="payment" value="pos" class="text-red-600">
                 <span>POS (tarjeta)</span>
               </label>
-              <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50">
+              <label class="flex items-center gap-2 p-2 border border-gray-300 cursor-pointer hover:bg-gray-50 checkout-payment-option">
                 <input type="radio" name="payment" value="mercadopago" class="text-red-600">
                 <span>Mercado Pago</span>
               </label>
@@ -137,16 +168,16 @@
           </div>
           <div id="checkout-cash-wrap" class="hidden">
             <label class="block text-sm font-medium text-gray-700 mb-1">¿Con cuánto vas a pagar?</label>
-            <input type="number" id="checkout-cash" min="0" step="1" placeholder="Monto en efectivo" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+            <input type="number" id="checkout-cash" min="0" step="1" placeholder="Monto en efectivo" class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
             <p id="checkout-change" class="mt-1 text-sm text-gray-600 hidden"></p>
-            <p id="checkout-cash-warning" class="mt-1 text-sm text-amber-600 hidden"></p>
+            <p id="checkout-cash-warning" class="mt-1 text-sm text-red-600 hidden"></p>
           </div>
-          <div class="border-t pt-4 space-y-1">
+          <div class="border-t border-gray-200 pt-4 space-y-1">
             <p class="flex justify-between"><span>Subtotal</span><span id="checkout-subtotal">$ 0</span></p>
             <p class="flex justify-between hidden" id="checkout-shipping-row"><span>Envío</span><span id="checkout-shipping">$ 0</span></p>
             <p class="flex justify-between font-semibold text-lg"><span>Total</span><span id="checkout-total">$ 0</span></p>
           </div>
-          <button type="submit" id="checkout-confirm-btn" class="w-full py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors">
+          <button type="submit" id="checkout-confirm-btn" class="w-full py-3 bg-green-600 text-white font-medium hover:bg-green-700 border border-green-700">
             Confirmar pedido
           </button>
         </form>
@@ -158,25 +189,29 @@
         <h2 class="text-xl font-semibold text-green-700 mb-2">Pedido enviado</h2>
         <p class="text-gray-600 mb-2">Te contactaremos para confirmarlo.</p>
         <p class="text-sm text-gray-500 mb-6"><span id="success-time">Tiempo estimado:</span></p>
-        <a href="#" id="success-new" class="inline-block py-2.5 px-6 bg-red-600 text-white rounded-lg hover:bg-red-700">Hacer otro pedido</a>
+        <a href="#" id="success-new" class="inline-block py-2.5 px-6 bg-red-600 text-white hover:bg-red-700 border border-red-700">Hacer otro pedido</a>
       </div>
     </main>
   </div>
 
-  <div id="loading-overlay" class="fixed inset-0 bg-black/30 z-50 hidden items-center justify-center">
-    <div class="bg-white rounded-lg px-6 py-4 shadow-xl">Cargando...</div>
+  <div id="loading-overlay" class="fixed inset-0 bg-black/40 z-50 hidden flex items-center justify-center">
+    <div class="flex flex-col items-center gap-3 bg-white px-8 py-6 border border-gray-200 shadow-xl">
+      <div class="w-10 h-10 border-2 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
+      <span class="text-sm font-medium text-gray-700">Cargando...</span>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/gh/yosbany/nrd-data-access@main/dist/nrd-data-access.js"></script>
   <script>window.nrd = new NRDDataAccess();</script>
-  <script src="modules/cart.js"></script>
-  <script src="modules/catalog-config.js"></script>
-  <script src="views/home/home.js"></script>
-  <script src="views/catalog/catalog.js"></script>
-  <script src="views/product-detail/product-detail.js"></script>
-  <script src="views/cart/cart.js"></script>
-  <script src="views/checkout/checkout.js"></script>
-  <script src="views/success/success.js"></script>
-  <script src="app.js"></script>
+  <script src="modules/storage.js?v=1770851993189"></script>
+  <script src="modules/cart.js?v=1770851993189"></script>
+  <script src="modules/catalog-config.js?v=1770851993189"></script>
+  <script src="views/home/home.js?v=1770851993189"></script>
+  <script src="views/catalog/catalog.js?v=1770851993189"></script>
+  <script src="views/product-detail/product-detail.js?v=1770851993189"></script>
+  <script src="views/cart/cart.js?v=1770851993189"></script>
+  <script src="views/checkout/checkout.js?v=1770851993189"></script>
+  <script src="views/success/success.js?v=1770851993189"></script>
+  <script src="app.js?v=1770851993189"></script>
 </body>
 </html>

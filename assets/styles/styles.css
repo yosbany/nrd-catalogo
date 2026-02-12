@@ -1,5 +1,13 @@
-/* nrd-catalogo - estilos adicionales */
+/* nrd-catalogo - estilos adicionales (NRD: recto, paleta rojo/gris) */
 .view { display: block; }
 .view.hidden { display: none !important; }
 .checkout-type-option.has-border { border-color: #dc2626; background: #fef2f2; }
-input[type="number"]::-webkit-inner-spin-button { opacity: 1; }
+.category-btn.active { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}

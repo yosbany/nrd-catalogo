@@ -203,11 +203,11 @@
     </div>
   </div>
 
-  <!-- NRD Data Access (misma lógica que nrd-pedidos: local en desarrollo, CDN en producción) -->
+  <!-- NRD Data Access: local en desarrollo; en producción CDN con commit fijado para incluir catalogConfig (actualizar commit al subir nrd-data-access) -->
   <script>
     var _nrdSrc = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '0.0.0.0')
       ? '/nrd-data-access/dist/nrd-data-access.js'
-      : 'https://cdn.jsdelivr.net/gh/yosbany/nrd-data-access@main/dist/nrd-data-access.js';
+      : 'https://cdn.jsdelivr.net/gh/yosbany/nrd-data-access@7a298f6/dist/nrd-data-access.js';
     document.write('<script src="' + _nrdSrc + '"><\/script>');
   </script>
   <script>

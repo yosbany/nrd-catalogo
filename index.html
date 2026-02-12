@@ -55,13 +55,21 @@
             <p id="header-delivery-info" class="text-xs text-gray-600 mt-0.5">-</p>
           </div>
         </a>
-        <a href="#" id="pwa-install-link" class="hidden flex-shrink-0 text-sm font-medium text-red-600 hover:text-red-700 px-2 py-1" title="Instalar como app">Instalar app</a>
         <a href="#" id="nav-cart" class="flex-shrink-0 flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
           Mi pedido <span id="cart-count" class="hidden ml-1 bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-xs font-bold">0</span>
         </a>
       </div>
     </header>
+
+    <!-- Banner instalar app: solo al cargar desde un enlace (referrer externo o ?install=1); el diálogo nativo se abre al clic -->
+    <div id="pwa-install-banner" class="hidden fixed bottom-0 left-0 right-0 z-30 bg-red-600 text-white px-4 py-3 flex items-center justify-between gap-3 shadow-lg max-w-4xl mx-auto">
+      <span class="text-sm">¿Abrir en la app?</span>
+      <div class="flex gap-2 flex-shrink-0">
+        <button type="button" id="pwa-install-dismiss" class="px-3 py-1.5 text-sm border border-white/80 rounded">Ahora no</button>
+        <button type="button" id="pwa-install-btn" class="px-3 py-1.5 text-sm bg-white text-red-600 font-medium rounded">Instalar</button>
+      </div>
+    </div>
 
     <!-- Main content: views -->
     <main class="flex-1 p-4 pb-8 bg-white">
@@ -226,55 +234,62 @@
   <script src="app.js?v=1770896635011"></script>
   <script>
     (function () {
-      var installLink = document.getElementById('pwa-install-link');
-      var deferredPrompt = null;
       var base = document.querySelector('base');
       var basePath = base ? base.getAttribute('href') : '/nrd-catalogo/';
       if (!basePath.endsWith('/')) basePath += '/';
-
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register(basePath + 'service-worker.js').catch(function (err) {
           console.warn('Service worker no registrado:', err);
         });
       }
 
-      function hideInstallLink() {
-        if (installLink) installLink.classList.add('hidden');
+      var deferredPrompt = null;
+      var banner = document.getElementById('pwa-install-banner');
+      var installBtn = document.getElementById('pwa-install-btn');
+      var dismissBtn = document.getElementById('pwa-install-dismiss');
+
+      function openedFromLink() {
+        var ref = document.referrer || '';
+        var url = window.location.href || '';
+        if (url.indexOf('install=1') !== -1 || url.indexOf('from=link') !== -1) return true;
+        if (!ref) return false;
+        try {
+          var origin = window.location.origin || '';
+          var refOrigin = ref.split('/').slice(0, 3).join('/');
+          return refOrigin !== origin;
+        } catch (e) { return false; }
       }
 
-      if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-        hideInstallLink();
+      function showBanner() {
+        if (!banner || !deferredPrompt) return;
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) return;
+        if (!openedFromLink()) return;
+        banner.classList.remove('hidden');
+      }
+
+      function hideBanner() {
+        if (banner) banner.classList.add('hidden');
+        deferredPrompt = null;
       }
 
       window.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();
         deferredPrompt = e;
-        if (installLink) installLink.classList.remove('hidden');
+        showBanner();
       });
 
-      if (installLink) {
-        installLink.addEventListener('click', function (e) {
-          e.preventDefault();
-          if (!deferredPrompt) {
-            var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-            var msg = isIOS
-              ? 'Toca "Compartir" y luego "Agregar a pantalla de inicio".'
-              : 'Abre el menú del navegador (⋮) y elige "Instalar app" o "Agregar a pantalla de inicio".';
-            if (window.alert) window.alert(msg);
-            return;
-          }
+      if (installBtn) {
+        installBtn.addEventListener('click', function () {
+          if (!deferredPrompt) { hideBanner(); return; }
           deferredPrompt.prompt();
           deferredPrompt.userChoice.then(function (choice) {
-            if (choice.outcome === 'accepted') deferredPrompt = null;
-            hideInstallLink();
-          }).catch(hideInstallLink);
+            hideBanner();
+          }).catch(hideBanner);
         });
       }
+      if (dismissBtn) dismissBtn.addEventListener('click', hideBanner);
 
-      window.addEventListener('appinstalled', function () {
-        deferredPrompt = null;
-        hideInstallLink();
-      });
+      window.addEventListener('appinstalled', hideBanner);
     })();
   </script>
 </body>

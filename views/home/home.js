@@ -14,7 +14,7 @@
     const src = typeof window.assetUrl === 'function' ? window.assetUrl(raw) : raw;
     const fallback = (typeof window.getDefaultProductImageUrl === 'function' ? window.getDefaultProductImageUrl() : 'assets/icons/icon-192.png');
     const displayName = typeof window.getProductDisplayName === 'function' ? window.getProductDisplayName(p) : (p.name || '');
-    return `<img src="${escapeHtml(src)}" alt="${escapeHtml(displayName)}" class="w-full aspect-square object-cover bg-gray-100 rounded-none" data-fallback="${escapeHtml(fallback)}" onerror="this.onerror=null;var f=this.getAttribute('data-fallback');if(f)this.src=f;">`;
+    return `<img src="${escapeHtml(src)}" alt="${escapeHtml(displayName)}" class="w-full h-full object-cover bg-gray-100 rounded-none" data-fallback="${escapeHtml(fallback)}" onerror="this.onerror=null;var f=this.getAttribute('data-fallback');if(f)this.src=f;">`;
   }
 
   function getProductTags(p) {
@@ -104,7 +104,7 @@
           <p class="text-red-600 font-medium mt-1">${formatCurrency(price)}</p>
         </div>
       </div>
-      <div class="w-24 h-24 md:w-32 md:h-32 flex-shrink-0 overflow-hidden bg-gray-100 rounded-none order-1 md:order-2">${productImageHtml(p)}</div>
+      <div class="w-24 md:w-32 flex-shrink-0 self-stretch overflow-hidden bg-gray-100 rounded-none order-1 md:order-2 flex items-stretch">${productImageHtml(p)}</div>
     `;
     card.addEventListener('click', () => {
       if (typeof window.showProductDetail === 'function') window.showProductDetail(p);

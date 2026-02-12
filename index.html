@@ -248,22 +248,9 @@
       var installBtn = document.getElementById('pwa-install-btn');
       var dismissBtn = document.getElementById('pwa-install-dismiss');
 
-      function openedFromLink() {
-        var ref = document.referrer || '';
-        var url = window.location.href || '';
-        if (url.indexOf('install=1') !== -1 || url.indexOf('from=link') !== -1) return true;
-        if (!ref) return false;
-        try {
-          var origin = window.location.origin || '';
-          var refOrigin = ref.split('/').slice(0, 3).join('/');
-          return refOrigin !== origin;
-        } catch (e) { return false; }
-      }
-
       function showBanner() {
         if (!banner || !deferredPrompt) return;
         if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) return;
-        if (!openedFromLink()) return;
         banner.classList.remove('hidden');
       }
 

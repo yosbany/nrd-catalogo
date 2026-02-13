@@ -169,7 +169,7 @@ function getProductOptionConfig(product) {
       })
       .map((c) => ({
         id: c.id,
-        name: c.name,
+        name: (c.commercialName && c.commercialName.trim()) ? c.commercialName.trim() : c.name,
         variantSku: variantSkus[c.id] || variantSkus[c.name]
       }))
       .filter((c) => c.variantSku);
@@ -191,7 +191,7 @@ function getVariantDisplayName(product, variant) {
     for (const [choiceId, vs] of Object.entries(variantSkus)) {
       if (String(vs || '').trim() === variantId) {
         const choice = option.choices.find((c) => c.id === choiceId || c.name === choiceId);
-        return choice ? choice.name : (variant.name || '');
+        return choice ? (choice.commercialName && choice.commercialName.trim() ? choice.commercialName.trim() : choice.name) : (variant.name || '');
       }
     }
   }

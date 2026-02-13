@@ -7,34 +7,70 @@
   <meta name="description" content="Catálogo y pedidos - Panadería Nueva Río D'or">
   <title>Nueva Río D'or - Pedidos</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="assets/styles/styles.css?v=1770935262851">
+  <link rel="stylesheet" href="assets/styles/styles.css?v=1770991063828">
   <meta name="theme-color" content="#dc2626">
   <link rel="manifest" href="manifest.json">
-  <link rel="shortcut icon" type="image/png" href="assets/icons/icon-192.png?v=1770935262851">
-  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=1770935262851">
-  <link rel="apple-touch-icon" href="assets/icons/icon-192.png?v=1770935262851">
-  <script>window.CATALOG_CACHE_VERSION = '1770935262851';</script>
+  <link rel="shortcut icon" type="image/png" href="assets/icons/icon-192.png?v=1770991063828">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=1770991063828">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png?v=1770991063828">
+  <script>window.CATALOG_CACHE_VERSION = '1770991063828';</script>
 
-  <!-- Limpieza de cache al cargar nueva versión (sin añadir ?v= a la URL) -->
+  <!-- Validate version against server: if server has newer build, force reload to avoid stale cache -->
   <script>
     (function() {
-      const stylesheet = document.querySelector('link[href*="assets/styles/styles.css"]');
-      const versionMatch = stylesheet ? stylesheet.href.match(/[?&]v=(\d+)/) : null;
-      const currentVersion = versionMatch ? versionMatch[1] : Date.now();
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlVersion = urlParams.get('v');
-      if (urlVersion && urlVersion !== currentVersion) {
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            for (var reg of registrations) reg.unregister();
-          });
-        }
-        if ('caches' in window) {
-          caches.keys().then(function(names) {
-            for (var name of names) caches.delete(name);
-          });
+      var link = document.querySelector('link[rel="stylesheet"][href*=".css"]');
+      var localVersion = link && link.href.match(/[?&]v=(\d+)/) ? link.href.match(/[?&]v=(\d+)/)[1] : null;
+      var urlParams = new URLSearchParams(window.location.search);
+      var urlVersion = urlParams.get('v');
+
+      function applyUrlSync() {
+        if (urlVersion !== localVersion && localVersion) {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              regs.forEach(function(r) { r.unregister(); });
+            });
+          }
+          if ('caches' in window) {
+            caches.keys().then(function(names) {
+              names.forEach(function(n) { caches.delete(n); });
+            });
+          }
+          var url = new URL(window.location.href);
+          url.searchParams.set('v', localVersion);
+          window.location.replace(url.toString());
         }
       }
+
+      if (!localVersion) {
+        applyUrlSync();
+        return;
+      }
+
+      fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          if (data && data.v != null) {
+            var serverVersion = String(data.v);
+            if (serverVersion !== localVersion) {
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(regs) {
+                  regs.forEach(function(r) { r.unregister(); });
+                });
+              }
+              if ('caches' in window) {
+                caches.keys().then(function(names) {
+                  names.forEach(function(n) { caches.delete(n); });
+                });
+              }
+              var url = new URL(window.location.href);
+              url.searchParams.set('v', serverVersion);
+              window.location.replace(url.toString());
+              return;
+            }
+          }
+          applyUrlSync();
+        })
+        .catch(function() { applyUrlSync(); });
     })();
   </script>
 </head>
@@ -53,7 +89,7 @@
         <a href="#" id="nav-cart" class="flex-shrink-0 flex flex-col items-center text-red-600 hover:text-red-700">
           <div class="flex items-center justify-center gap-1">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-            <span id="cart-count" class="hidden bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-xs font-bold min-w-[1.25rem] text-center">0</span>
+            <span id="cart-count" class="hidden bg-red-100 text-red-600 px-1.5 py-0.5 text-xs font-bold min-w-[1.25rem] text-center">0</span>
           </div>
           <span class="text-xs font-medium mt-0.5">Mi pedido</span>
         </a>
@@ -64,8 +100,8 @@
     <div id="pwa-install-banner" class="hidden fixed bottom-0 left-0 right-0 z-30 bg-red-600 text-white px-4 py-3 flex items-center justify-between gap-3 shadow-lg max-w-4xl mx-auto">
       <span class="text-sm">¿Abrir en la app?</span>
       <div class="flex gap-2 flex-shrink-0">
-        <button type="button" id="pwa-install-dismiss" class="px-3 py-1.5 text-sm border border-white/80 rounded">Ahora no</button>
-        <button type="button" id="pwa-install-btn" class="px-3 py-1.5 text-sm bg-white text-red-600 font-medium rounded">Instalar</button>
+        <button type="button" id="pwa-install-dismiss" class="px-3 py-1.5 text-sm border border-white/80">Ahora no</button>
+        <button type="button" id="pwa-install-btn" class="px-3 py-1.5 text-sm bg-white text-red-600 font-medium">Instalar</button>
       </div>
     </div>
 
@@ -73,7 +109,7 @@
     <main class="flex-1 p-4 pb-8 bg-white">
       <!-- Home -->
       <div id="view-home" class="view">
-        <div id="store-closed-banner" class="hidden mb-3 px-4 py-3 bg-amber-500 text-amber-900 font-medium text-center rounded border-2 border-amber-600 shadow">
+        <div id="store-closed-banner" class="hidden mb-3 px-4 py-3 bg-amber-500 text-amber-900 font-medium text-center border-2 border-amber-600 shadow">
           Local cerrado en este momento. Los pedidos se atenderán cuando estemos abiertos.
         </div>
         <div class="mb-3">
@@ -82,15 +118,15 @@
         </div>
         <div class="flex flex-nowrap items-center justify-start gap-2 mb-4">
           <div class="relative w-auto flex-initial" id="home-section-wrap">
-            <button type="button" id="home-section-btn" class="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 whitespace-nowrap">
+            <button type="button" id="home-section-btn" class="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 whitespace-nowrap">
               <span id="home-section-btn-text" class="truncate max-w-[8rem]">Todos</span>
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
-            <div id="home-section-dropdown" class="hidden absolute top-full left-0 mt-1 min-w-[10rem] max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
+            <div id="home-section-dropdown" class="hidden absolute top-full left-0 mt-1 min-w-[10rem] max-h-60 overflow-y-auto bg-white border border-gray-200 shadow-lg z-20 py-1">
               <!-- opciones rellenadas por JS -->
             </div>
           </div>
-          <button type="button" id="home-sort-price-btn" class="inline-flex items-center gap-1.5 px-2.5 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 flex-shrink-0 whitespace-nowrap">
+          <button type="button" id="home-sort-price-btn" class="inline-flex items-center gap-1.5 px-2.5 py-2 border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 flex-shrink-0 whitespace-nowrap">
             <span id="home-sort-price-btn-icon" aria-hidden="true"><!-- icono up/down según estado, rellenado por JS --></span>
             <span id="home-sort-price-btn-text">Más bajo primero</span>
           </button>
@@ -115,7 +151,7 @@
           <!-- filled by JS: image with close overlay, info, etc -->
         </div>
         <div class="mt-2 px-3 pb-2">
-          <button type="button" id="product-add-cart" class="w-full py-2.5 px-3 bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors border border-red-700 flex items-center justify-between gap-2 rounded-lg">
+          <button type="button" id="product-add-cart" class="w-full py-2.5 px-3 bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors border border-red-700 flex items-center justify-between gap-2">
             <!-- filled by product-detail.js -->
           </button>
         </div>
@@ -123,8 +159,14 @@
 
       <!-- Cart -->
       <div id="view-cart" class="view hidden">
-        <h2 class="text-lg font-semibold mb-4 border-b border-gray-200 pb-3">Mi pedido</h2>
+        <div class="flex items-center gap-2 mb-4 border-b border-gray-200 pb-3">
+          <button type="button" id="cart-back-btn" class="flex items-center justify-center w-10 h-10 text-gray-600 hover:text-red-600 hover:bg-red-50" title="Regresar atrás" aria-label="Regresar atrás">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </button>
+          <h2 class="text-lg font-semibold text-gray-900 flex-1">Mi pedido</h2>
+        </div>
         <div id="cart-items" class="space-y-2 mb-4"></div>
+        <div id="cart-incentive-msg" class="hidden p-3 bg-green-50 border border-green-200 border-l-4 border-l-green-600 text-sm text-green-900 mb-4"></div>
         <div id="cart-minimum-msg" class="hidden p-3 bg-red-50 border border-red-100 border-l-4 border-l-red-600 text-sm text-red-900 mb-4"></div>
         <section class="pt-4 pb-4 border-b border-gray-200" id="cart-suggestions-section">
           <div class="flex justify-between items-baseline gap-2 mb-3">
@@ -139,11 +181,11 @@
           <p class="flex justify-between text-gray-900 font-bold"><span>Subtotal</span><span id="cart-subtotal">$ 0</span></p>
         </div>
         <div class="flex gap-3 pt-2 pb-6">
-          <a href="#" id="cart-continue" class="flex-1 py-3 px-4 border border-gray-300 rounded-lg text-center hover:bg-gray-50 text-gray-700 font-medium inline-flex items-center justify-center gap-2">
+          <a href="#" id="cart-continue" class="flex-1 py-3 px-4 border border-gray-300 text-center hover:bg-gray-50 text-gray-700 font-medium inline-flex items-center justify-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
             Seguir comprando
           </a>
-          <button type="button" id="cart-checkout" class="flex-1 py-3 px-4 bg-red-600 text-white hover:bg-red-700 border border-red-700 rounded-lg font-medium inline-flex items-center justify-center gap-2">
+          <button type="button" id="cart-checkout" class="flex-1 py-3 px-4 bg-red-600 text-white hover:bg-red-700 border border-red-700 font-medium inline-flex items-center justify-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             Finalizar pedido
           </button>
@@ -243,11 +285,26 @@
   <div id="loading-overlay" class="loading-overlay fixed inset-0 z-50 hidden flex items-center justify-center">
     <div class="loading-content flex flex-col items-center gap-4">
       <div class="loading-dots flex items-center gap-1.5" aria-hidden="true">
-        <span class="loading-dot w-2 h-2 rounded-full bg-red-500"></span>
-        <span class="loading-dot w-2 h-2 rounded-full bg-red-500 loading-dot--2"></span>
-        <span class="loading-dot w-2 h-2 rounded-full bg-red-500 loading-dot--3"></span>
+        <span class="loading-dot w-2 h-2 bg-red-500"></span>
+        <span class="loading-dot w-2 h-2 bg-red-500 loading-dot--2"></span>
+        <span class="loading-dot w-2 h-2 bg-red-500 loading-dot--3"></span>
       </div>
       <span class="loading-text text-sm font-light text-white/90 tracking-wide">Cargando...</span>
+    </div>
+  </div>
+
+  <!-- Alerta del sistema (no nativa) -->
+  <div id="app-alert" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center p-4">
+    <div class="bg-white max-w-md w-full border border-gray-200 shadow-lg">
+      <div class="p-4 sm:p-6">
+        <h3 id="app-alert-title" class="text-lg sm:text-xl font-light mb-3 sm:mb-4 text-gray-900"></h3>
+        <p id="app-alert-message" class="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6"></p>
+        <div class="flex justify-end">
+          <button type="button" id="app-alert-ok" class="px-4 sm:px-6 py-2 bg-red-600 text-white border border-red-600 hover:bg-red-700 transition-colors uppercase tracking-wider text-xs sm:text-sm font-light">
+            Aceptar
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -262,16 +319,17 @@
     window.nrd = typeof NRDDataAccess !== 'undefined' ? new NRDDataAccess() : null;
     if (!window.nrd) console.error('NRDDataAccess no cargó. Verifica la ruta a nrd-data-access.');
   </script>
-  <script src="modules/storage.js?v=1770935262851"></script>
-  <script src="modules/cart.js?v=1770935262851"></script>
-  <script src="modules/catalog-config.js?v=1770935262851"></script>
-  <script src="views/home/home.js?v=1770935262851"></script>
-  <script src="views/catalog/catalog.js?v=1770935262851"></script>
-  <script src="views/product-detail/product-detail.js?v=1770935262851"></script>
-  <script src="views/cart/cart.js?v=1770935262851"></script>
-  <script src="views/checkout/checkout.js?v=1770935262851"></script>
-  <script src="views/success/success.js?v=1770935262851"></script>
-  <script src="app.js?v=1770935262851"></script>
+  <script src="modules/storage.js?v=1770991063828"></script>
+  <script src="modules/cart.js?v=1770991063828"></script>
+  <script src="modules/address-validation.js?v=1770991063828"></script>
+  <script src="modules/catalog-config.js?v=1770991063828"></script>
+  <script src="views/home/home.js?v=1770991063828"></script>
+  <script src="views/catalog/catalog.js?v=1770991063828"></script>
+  <script src="views/product-detail/product-detail.js?v=1770991063828"></script>
+  <script src="views/cart/cart.js?v=1770991063828"></script>
+  <script src="views/checkout/checkout.js?v=1770991063828"></script>
+  <script src="views/success/success.js?v=1770991063828"></script>
+  <script src="app.js?v=1770991063828"></script>
   <script>
     (function () {
       var base = document.querySelector('base');

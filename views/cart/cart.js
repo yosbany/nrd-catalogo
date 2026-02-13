@@ -15,8 +15,56 @@
     return d.toLocaleDateString('es-UY', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
+  /** Convierte el ID del pedido en un código corto legible de 6 caracteres (mismo ID = mismo código). */
+  function orderIdToShortCode(id) {
+    if (!id || typeof id !== 'string') return '';
+    const base = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let h = 0;
+    for (let i = 0; i < id.length; i++) {
+      h = ((h << 5) - h) + id.charCodeAt(i);
+      h = h | 0;
+    }
+    h = Math.abs(h);
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += base[h % base.length];
+      h = Math.floor(h / base.length);
+    }
+    return code;
+  }
+
   let activeOrderUnsubscribe = null;
   let lastActiveOrderStatus = null;
+  let activeOrderTimerInterval = null;
+
+  function updateActiveOrderTimer() {
+    const card = document.getElementById('cart-active-order-card');
+    const timerEl = document.getElementById('cart-active-order-timer');
+    if (!card || !timerEl) return;
+    const createdAt = parseInt(card.dataset.createdAt, 10);
+    const deliveryAt = parseInt(card.dataset.deliveryAt, 10);
+    if (!createdAt || isNaN(createdAt)) return;
+    const now = Date.now();
+    const hasDelivery = deliveryAt && !isNaN(deliveryAt);
+    let text;
+    let isOverdue = false;
+    if (hasDelivery) {
+      if (now < deliveryAt) {
+        const remainingMin = Math.ceil((deliveryAt - now) / 60000);
+        text = remainingMin + ' min';
+      } else {
+        isOverdue = true;
+        const overdueMin = Math.floor((now - deliveryAt) / 60000);
+        text = '-' + overdueMin + ' min';
+      }
+    } else {
+      const elapsedMin = Math.floor((now - createdAt) / 60000);
+      text = elapsedMin + ' min';
+    }
+    const dotClass = isOverdue ? 'bg-red-500' : 'bg-blue-500';
+    const textClass = isOverdue ? 'text-red-700' : 'text-blue-700';
+    timerEl.innerHTML = '<span class="inline-block w-2 h-2 ' + dotClass + ' animate-pulse" aria-hidden="true"></span><span class="text-xs font-medium ' + textClass + '">' + text + '</span>';
+  }
 
   function playAcceptedBeep() {
     try {
@@ -58,6 +106,7 @@
         activeOrderUnsubscribe = nrd.orders.onValueById(activeOrderId, (order) => {
           if (!order) {
             lastActiveOrderStatus = null;
+            if (activeOrderTimerInterval) { clearInterval(activeOrderTimerInterval); activeOrderTimerInterval = null; }
             if (typeof window.clearActiveOrderIdFromStorage === 'function') window.clearActiveOrderIdFromStorage();
             if (activeOrderEl) { activeOrderEl.classList.add('hidden'); activeOrderEl.innerHTML = ''; }
             return;
@@ -70,24 +119,45 @@
           lastActiveOrderStatus = status;
           if (!isPending) {
             lastActiveOrderStatus = null;
+            if (activeOrderTimerInterval) { clearInterval(activeOrderTimerInterval); activeOrderTimerInterval = null; }
             if (typeof window.clearActiveOrderIdFromStorage === 'function') window.clearActiveOrderIdFromStorage();
             activeOrderEl.classList.add('hidden');
             activeOrderEl.innerHTML = '';
             return;
           }
+          if (activeOrderTimerInterval) { clearInterval(activeOrderTimerInterval); activeOrderTimerInterval = null; }
           activeOrderEl.classList.remove('hidden');
-          const summary = (order.items || []).slice(0, 2).map((i) => i.productName || '').join(', ') + ((order.items || []).length > 2 ? '...' : '');
+          const items = order.items || [];
+          const itemsHtml = items.length
+            ? items.map((i) => '<li class="text-sm text-gray-800 leading-tight">' + escapeHtml((i.quantity || 1) + ' × ' + (i.productName || 'Producto')) + '</li>').join('')
+            : '<li class="text-sm text-gray-500">Sin ítems</li>';
           const total = order.total != null ? '$ ' + Math.round(order.total).toLocaleString('es-UY') : '';
           const dateStr = formatOrderDate(order.createdAt);
+          const whatsappNum = '59899646848';
+          const orderCode = order.id ? orderIdToShortCode(order.id) : '';
+          const defaultMsg = 'Hola, consulto por mi pedido' +
+            (orderCode ? ' #' + orderCode : '') +
+            (dateStr ? ' del ' + dateStr : '') +
+            (total ? '. Total ' + total : '') + '.';
+          const whatsappUrl = 'https://wa.me/' + whatsappNum + '?text=' + encodeURIComponent(defaultMsg);
+          const createdAt = order.createdAt ? Number(order.createdAt) : Date.now();
+          const deliveryAt = order.deliveryDate ? Number(order.deliveryDate) : 0;
           activeOrderEl.innerHTML =
-            '<h3 class="text-sm font-semibold text-red-700 mb-2 flex items-center gap-2">' +
-            '<span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" title="Pedido en curso"></span>' +
-            'Pedido en curso</h3>' +
-            '<div class="p-3 border-2 border-red-200 bg-red-50">' +
-            '<span class="text-sm text-gray-800 block">' + escapeHtml(summary || 'Pedido') + (total ? ' — ' + total : '') + '</span>' +
-            (dateStr ? '<span class="text-xs text-gray-600 block mt-1">' + escapeHtml(dateStr) + '</span>' : '') +
-            '<span class="text-xs text-red-700 font-medium mt-1 block">Estado: ' + escapeHtml(order.status || 'Pendiente') + '</span>' +
+            '<h3 class="text-sm font-semibold text-red-700 mb-2 flex items-center gap-2">Pedido en curso</h3>' +
+            '<div id="cart-active-order-card" class="p-4 border-2 border-red-400 bg-red-50 shadow-sm" data-created-at="' + String(createdAt) + '" data-delivery-at="' + String(deliveryAt) + '">' +
+            '<ul class="list-none pl-0 space-y-1">' + itemsHtml + '</ul>' +
+            (total ? '<p class="text-sm font-bold text-gray-900 mt-2">' + total + '</p>' : '') +
+            '<div class="flex items-center gap-2 mt-0.5 flex-wrap">' +
+            (dateStr ? '<span class="text-xs text-gray-600">' + escapeHtml(dateStr) + '</span>' : '') +
+            '<span id="cart-active-order-timer" class="flex items-center gap-1.5"></span></div>' +
+            '<div class="mt-3 flex items-center justify-between gap-2">' +
+            '<span class="inline-block px-2 py-1 text-xs font-bold text-red-700 uppercase tracking-wide bg-red-100 border border-red-300">' + escapeHtml(order.status || 'Pendiente') + '</span>' +
+            '<a href="' + escapeHtml(whatsappUrl) + '" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 hover:text-green-800 hover:underline shrink-0">' +
+            '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>' +
+            'Contactar por WhatsApp</a></div>' +
             '</div>';
+          updateActiveOrderTimer();
+          activeOrderTimerInterval = setInterval(updateActiveOrderTimer, 60000);
         });
       } else {
         activeOrderEl.classList.add('hidden');
@@ -100,15 +170,22 @@
       lastOrdersEl.classList.remove('hidden');
       lastOrdersEl.innerHTML = '<h3 class="text-sm font-semibold text-gray-700 mb-2">Historial de pedidos</h3>' +
         lastOrders.slice(0, 5).map((ord, idx) => {
-          const summary = (ord.items || []).slice(0, 2).map((i) => i.productName).join(', ') + ((ord.items || []).length > 2 ? '...' : '');
-          const total = ord.total != null ? '$ ' + Math.round(ord.total).toLocaleString('es-UY') : '';
+          const items = ord.items || [];
+          const totalStr = ord.total != null ? formatCurrency(ord.total) : '';
           const dateStr = formatOrderDate(ord.createdAt);
-          return `<div class="flex items-start justify-between gap-2 p-2 border border-gray-200 bg-gray-50 mb-1">
+          const itemsHtml = items.length
+            ? items.map((i) => '<li class="leading-tight">' + escapeHtml((i.quantity || 1) + ' × ' + (i.productName || 'Producto')) + '</li>').join('')
+            : '<li class="text-gray-500">Sin ítems</li>';
+          const repeatIcon = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>';
+          return `<div class="flex items-start justify-between gap-3 p-3 border border-gray-200 bg-white mb-2">
             <div class="flex-1 min-w-0">
-              <span class="text-sm text-gray-700 truncate block">${escapeHtml(summary || 'Pedido')} ${total ? '— ' + total : ''}</span>
-              ${dateStr ? `<span class="text-xs text-gray-500">${escapeHtml(dateStr)}</span>` : ''}
+              <ul class="text-sm text-gray-800 space-y-0.5 list-none pl-0">${itemsHtml}</ul>
+              <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0 text-xs text-gray-500">
+                ${totalStr ? `<span class="font-bold text-gray-800">${totalStr}</span>` : ''}
+                ${dateStr ? `<span>${escapeHtml(dateStr)}</span>` : ''}
+              </div>
             </div>
-            <button type="button" class="cart-repeat-btn flex-shrink-0 py-1 px-2 text-sm text-red-600 hover:text-red-700 border border-red-300 hover:bg-red-50" data-idx="${idx}">Repetir</button>
+            <button type="button" class="cart-repeat-btn flex-shrink-0 inline-flex items-center gap-1.5 py-1.5 px-3 text-sm text-red-600 hover:text-red-700 border border-red-300 hover:bg-red-50" data-idx="${idx}">${repeatIcon}Repetir</button>
           </div>`;
         }).join('');
       lastOrdersEl.querySelectorAll('.cart-repeat-btn').forEach((btn) => {
@@ -121,8 +198,8 @@
             window.setPendingCheckoutPreload({ name: ord.name, phone: ord.phone, address: ord.address });
           }
           window.updateCartCount();
-          window.showView('checkout');
-          if (typeof window.renderCheckout === 'function') window.renderCheckout();
+          window.showView('cart');
+          render();
         });
       });
     } else if (lastOrdersEl) {
@@ -142,19 +219,19 @@
       const notesKey = item.notes || '';
       const trashSvg = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
       row.innerHTML = `
-        <div class="w-16 flex-shrink-0 self-stretch min-h-[4rem] overflow-hidden bg-gray-100 rounded flex">${cartItemImageHtml(item)}</div>
+        <div class="w-16 flex-shrink-0 self-stretch min-h-[4rem] overflow-hidden bg-gray-100 flex">${cartItemImageHtml(item)}</div>
         <div class="flex-1 min-w-0">
           <p class="font-medium text-gray-900 break-words">${escapeHtml(item.productName)}</p>
           ${notesKey ? `<p class="text-xs text-gray-500">${escapeHtml(notesKey)}</p>` : ''}
           <p class="text-sm text-gray-600">${formatCurrency(item.price)} × ${item.quantity} = <span class="font-bold">${formatCurrency((item.price || 0) * (item.quantity || 0))}</span></p>
         </div>
         <div class="flex items-center gap-0.5 flex-shrink-0">
-          <div class="flex items-center rounded-lg border border-gray-300 overflow-hidden">
+          <div class="flex items-center border border-gray-300 overflow-hidden">
             <button type="button" class="cart-qty-minus w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-700 text-lg font-light" data-idx="${idx}">−</button>
             <span class="cart-qty w-8 text-center py-1 text-sm border-x border-gray-300 bg-white">${item.quantity}</span>
             <button type="button" class="cart-qty-plus w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-700 text-lg font-light" data-idx="${idx}">+</button>
           </div>
-          <button type="button" class="cart-remove w-8 h-8 flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-red-50 rounded -ml-px" data-idx="${idx}" title="Eliminar">${trashSvg}</button>
+          <button type="button" class="cart-remove w-8 h-8 flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-red-50 -ml-px" data-idx="${idx}" title="Eliminar">${trashSvg}</button>
         </div>
       `;
       row.querySelector('.cart-qty-minus').onclick = () => {
@@ -177,23 +254,44 @@
 
     if (subtotalEl) subtotalEl.textContent = formatCurrency(subtotal);
 
-    if (minMsgEl && minimum > 0 && subtotal < minimum) {
-      const missing = minimum - subtotal;
-      minMsgEl.textContent = 'Agregá ' + formatCurrency(missing) + ' para alcanzar el mínimo de envío.';
-      minMsgEl.classList.remove('hidden');
-    } else if (minMsgEl) {
-      minMsgEl.classList.add('hidden');
+    const incentiveEl = document.getElementById('cart-incentive-msg');
+    if (items.length === 0) {
+      if (minMsgEl) minMsgEl.classList.add('hidden');
+      if (incentiveEl) {
+        incentiveEl.textContent = 'Tu pedido está vacío. Agregá productos del catálogo y te lo llevamos o retirás en local.';
+        incentiveEl.classList.remove('hidden');
+      }
+    } else {
+      if (incentiveEl) incentiveEl.classList.add('hidden');
+      if (minMsgEl && minimum > 0 && subtotal < minimum) {
+        const missing = minimum - subtotal;
+        minMsgEl.textContent = 'Agregá ' + formatCurrency(missing) + ' para alcanzar el mínimo de envío.';
+        minMsgEl.classList.remove('hidden');
+      } else if (minMsgEl) {
+        minMsgEl.classList.add('hidden');
+      }
     }
 
     const checkoutBtn = document.getElementById('cart-checkout');
+    const continueBtn = document.getElementById('cart-continue');
+    const hasItems = items.length > 0;
     if (checkoutBtn) {
-      const hasItems = items.length > 0;
-      const meetsMinimum = minimum <= 0 || subtotal >= minimum;
-      const storeOpen = typeof window.isStoreOpen === 'function' ? window.isStoreOpen() : true;
-      const canCheckout = hasItems && meetsMinimum && storeOpen;
-      checkoutBtn.disabled = !canCheckout;
-      checkoutBtn.classList.toggle('opacity-50', !canCheckout);
-      checkoutBtn.classList.toggle('cursor-not-allowed', !canCheckout);
+      if (!hasItems) {
+        checkoutBtn.classList.add('hidden');
+      } else {
+        checkoutBtn.classList.remove('hidden');
+        const meetsMinimum = minimum <= 0 || subtotal >= minimum;
+        const storeOpen = typeof window.isStoreOpen === 'function' ? window.isStoreOpen() : true;
+        const canCheckout = meetsMinimum && storeOpen;
+        checkoutBtn.disabled = !canCheckout;
+        checkoutBtn.classList.toggle('opacity-50', !canCheckout);
+        checkoutBtn.classList.toggle('cursor-not-allowed', !canCheckout);
+      }
+    }
+    if (continueBtn) {
+      continueBtn.classList.toggle('flex-1', hasItems);
+      if (!hasItems) continueBtn.classList.add('w-full');
+      else continueBtn.classList.remove('w-full');
     }
 
     const suggestionsEl = document.getElementById('cart-suggestions');
@@ -262,7 +360,7 @@
             const name = escapeHtml(item.name);
             const price = formatCurrency(item.price);
             return (
-              '<button type="button" class="cart-suggestion-card flex-shrink-0 w-28 snap-start text-left rounded border border-gray-200 overflow-hidden bg-white hover:border-red-300 hover:shadow transition-colors" data-sku="' +
+              '<button type="button" class="cart-suggestion-card flex-shrink-0 w-28 snap-start text-left border border-gray-200 overflow-hidden bg-white hover:border-red-300 hover:shadow transition-colors" data-sku="' +
               escapeHtml(item.sku) +
               '">' +
               '<div class="w-full aspect-square bg-gray-100 overflow-hidden">' +
@@ -341,6 +439,8 @@
   };
 
   window.initCart = function () {
+    const backBtn = document.getElementById('cart-back-btn');
+    if (backBtn) backBtn.addEventListener('click', () => window.showView('home'));
     document.getElementById('cart-continue').addEventListener('click', (e) => {
       e.preventDefault();
       window.showView('home');

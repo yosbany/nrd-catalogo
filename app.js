@@ -43,12 +43,40 @@
     if (logoEl && typeof window.assetUrl === 'function') logoEl.src = window.assetUrl('assets/icons/icon-192.png');
   }
 
+  function showAlert(title, message) {
+    return new Promise(function (resolve) {
+      var box = document.getElementById('app-alert');
+      var titleEl = document.getElementById('app-alert-title');
+      var messageEl = document.getElementById('app-alert-message');
+      var okBtn = document.getElementById('app-alert-ok');
+      if (!box || !titleEl || !messageEl || !okBtn) {
+        resolve();
+        return;
+      }
+      titleEl.textContent = title || '';
+      messageEl.textContent = message || '';
+      box.classList.remove('hidden');
+      function close() {
+        box.classList.add('hidden');
+        okBtn.removeEventListener('click', close);
+        box.removeEventListener('click', onBackdrop);
+        resolve();
+      }
+      function onBackdrop(e) {
+        if (e.target === box) close();
+      }
+      okBtn.addEventListener('click', close);
+      box.addEventListener('click', onBackdrop);
+    });
+  }
+
   window.showView = showView;
   window.getProducts = () => products;
   window.setProducts = (p) => { products = p; };
   window.getCompanyInfo = () => companyInfo;
   window.setCompanyInfo = (c) => { companyInfo = c; };
   window.updateCartCount = updateCartCount;
+  window.showAlert = showAlert;
 
   if (window.cart) window.cart.onChange(updateCartCount);
 

@@ -66,6 +66,11 @@ def update_version(project_name=None):
     with open(html_path, 'w', encoding='utf-8') as f:
         f.write(html)
 
+    import json
+    version_path = script_dir / 'version.json'
+    with open(version_path, 'w', encoding='utf-8') as f:
+        json.dump({'v': version}, f)
+
     print(f"✅ {project_name}: Versión actualizada a {version}")
 
 

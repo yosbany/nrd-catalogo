@@ -2,7 +2,14 @@
  * Vista Checkout: tipo entrega (retiro/envío), dirección si envío, nombre, teléfono, observaciones, medio de pago, efectivo (monto/cambio), resumen, confirmar.
  */
 (function () {
+  const WHATSAPP_PANADERIA = '59899646848';
   const formatCurrency = (n) => (n != null && !isNaN(n) ? '$ ' + Math.round(n).toLocaleString('es-UY') : '$ -');
+  function escapeHtml(s) {
+    if (s == null) return '';
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
 
   function getDeliveryType() {
     const r = document.querySelector('input[name="deliveryType"]:checked');
@@ -217,10 +224,24 @@
         alert('El pedido no alcanza el mínimo de ' + formatCurrency(minimum) + '. Agregá más productos.');
         return;
       }
-      const address = type === 'envio' ? document.getElementById('checkout-address').value.trim() : '';
-      if (type === 'envio' && !address) {
+      const addressRaw = type === 'envio' ? document.getElementById('checkout-address').value.trim() : '';
+      if (type === 'envio' && !addressRaw) {
         alert('Ingresá la dirección de envío.');
         return;
+      }
+      const address = addressRaw;
+      let addressWazeUrl = null;
+      if (type === 'envio' && address && typeof window.validarDireccion === 'function') {
+        const resultado = window.validarDireccion(address);
+        if (resultado.status === 'INVALIDA') {
+          if (typeof window.showAlert === 'function') {
+            window.showAlert('Dirección', resultado.mensajeParaCliente || 'Por favor indicá la dirección con calle y número, o esquina de dos calles.');
+          } else {
+            alert(resultado.mensajeParaCliente || 'Por favor indicá la dirección con calle y número, o esquina de dos calles.');
+          }
+          return;
+        }
+        if (resultado.wazeUrl) addressWazeUrl = resultado.wazeUrl;
       }
       const payment = type === 'envio' ? document.querySelector('input[name="payment"]:checked') : null;
       if (type === 'envio' && !payment) {
@@ -237,11 +258,17 @@
       }
       const shipping = getShippingCost();
       const total = subtotal + shipping;
+      const wazeHref = type === 'envio' && address ? (addressWazeUrl || 'https://waze.com/ul?q=' + encodeURIComponent(address)) : '';
+      const envioLine = type === 'envio' && address
+        ? 'Envío: ' + '<a href="' + wazeHref + '" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">' + escapeHtml(address) + '</a>'
+        : (type === 'envio' ? null : null);
+      const retiroLine = type !== 'envio' ? ('Retiro en local' + (retiroTime ? ' - Horario: ' + retiroTime : '')) : null;
       const orderNotes = [
         notes,
-        type === 'envio' ? 'Envío: ' + address : ('Retiro en local' + (retiroTime ? ' - Horario: ' + retiroTime : '')),
+        envioLine,
+        retiroLine,
         type === 'envio' && payment ? ('Pago: ' + (payment.value === 'efectivo' ? 'Efectivo' + (cashNote ? ' (paga con $' + cashNote + ')' : '') : payment.value === 'pos' ? 'POS' : 'Mercado Pago')) : null,
-        'Cliente: ' + name + ' - Tel: ' + phone
+        phone ? 'Tel: ' + phone : null
       ].filter(Boolean).join('\n');
 
       // productId/variantId asociados al artículo u opción del catálogo para que en pedidos se vea qué se pidió
@@ -287,16 +314,24 @@
 
         const cfg = typeof window.getCatalogConfig === 'function' ? window.getCatalogConfig() : {};
         const now = Date.now();
-        let estMinutes = 60;
-        if (type === 'envio') {
-          const estStr = String(cfg.estimatedMinutes || '30').trim();
-          const firstNum = estStr.match(/\d+/) ? parseInt(estStr.match(/\d+/)[0], 10) : 30;
-          estMinutes = isNaN(firstNum) || firstNum <= 0 ? 30 : Math.min(firstNum, 180);
+        let deliveryDate;
+        if (type === 'retiro' && retiroTime && /^\d{1,2}:\d{2}$/.test(retiroTime.trim())) {
+          const [h, m] = retiroTime.trim().split(':').map((n) => parseInt(n, 10));
+          const today = new Date();
+          const slot = new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m || 0, 0, 0);
+          deliveryDate = slot.getTime();
+          if (deliveryDate <= now) slot.setDate(slot.getDate() + 1);
+          deliveryDate = slot.getTime();
         } else {
-          estMinutes = 60;
+          let estMinutes = type === 'envio' ? 30 : 60;
+          if (type === 'envio') {
+            const estStr = String(cfg.estimatedMinutes || '30').trim();
+            const firstNum = estStr.match(/\d+/) ? parseInt(estStr.match(/\d+/)[0], 10) : 30;
+            estMinutes = isNaN(firstNum) || firstNum <= 0 ? 30 : Math.min(firstNum, 180);
+          }
+          deliveryDate = now + estMinutes * 60 * 1000;
+          if (deliveryDate < now) deliveryDate = now;
         }
-        let deliveryDate = now + estMinutes * 60 * 1000;
-        if (deliveryDate < now) deliveryDate = now;
 
         const orderData = {
           clientId,
@@ -306,7 +341,8 @@
           items,
           total: Math.round(total),
           notes: orderNotes || null,
-          deliveryDate
+          deliveryDate,
+          deliveryType: type
         };
         const orderId = await nrd.orders.create(orderData);
         if (typeof window.addLastOrderToStorage === 'function') {
@@ -314,6 +350,26 @@
         }
         if (orderId && typeof window.setActiveOrderIdToStorage === 'function') {
           window.setActiveOrderIdToStorage(orderId);
+        }
+        var resumen = '*Nuevo pedido*\n\n';
+        resumen += 'Cliente: ' + (name || '') + '\n';
+        resumen += 'Tel: ' + (phone || '') + '\n';
+        resumen += type === 'envio' ? 'Entrega: ' + (address || '') + '\n' : 'Retiro en local' + (retiroTime ? ' - ' + retiroTime : '') + '\n';
+        if (type === 'envio' && payment) {
+          resumen += 'Pago: ' + (payment.value === 'efectivo' ? 'Efectivo' + (cashNote ? ' (paga con $' + cashNote + ')' : '') : payment.value === 'pos' ? 'POS' : 'Mercado Pago') + '\n';
+        }
+        resumen += '\n*Pedido:*\n';
+        (window.cart.items || []).forEach(function (i) {
+          resumen += '• ' + (i.quantity || 0) + ' x ' + (i.productName || '') + ' - ' + formatCurrency((i.price || 0) * (i.quantity || 0)) + '\n';
+        });
+        resumen += '\nTotal: ' + formatCurrency(total) + '\n';
+        if (orderNotes && orderNotes.trim()) {
+          resumen += '\nObservaciones:\n' + orderNotes.replace(/<[^>]*>/g, '').trim() + '\n';
+        }
+        try {
+          window.open('https://wa.me/' + WHATSAPP_PANADERIA + '?text=' + encodeURIComponent(resumen), '_blank');
+        } catch (e) {
+          console.warn('No se pudo abrir WhatsApp:', e);
         }
         window.cart.clear();
         window.updateCartCount();

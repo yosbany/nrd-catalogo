@@ -125,45 +125,103 @@
     card.className = 'flex relative bg-white border border-gray-200 overflow-hidden hover:border-red-300 transition-colors cursor-pointer';
     card.dataset.productId = (p && p.id) ? String(p.id) : '';
     card.innerHTML = `
-      ${cartQty > 0 ? `<span class="absolute top-1.5 right-1.5 z-10 min-w-[1.25rem] h-5 px-1 flex items-center justify-center bg-red-600 text-white text-xs font-bold rounded-full">${cartQty}</span>` : ''}
-      <button type="button" class="cart-add-one absolute bottom-1.5 right-1.5 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white border-2 border-red-600 text-red-600 hover:bg-red-50 hover:border-red-700 cursor-pointer" title="Agregar una unidad">${plusSvg}</button>
+      ${cartQty > 0 ? `<span class="absolute top-1.5 right-1.5 z-10 min-w-[1.25rem] h-5 px-1 flex items-center justify-center bg-red-600 text-white text-xs font-bold">${cartQty}</span>` : ''}
+      <button type="button" class="cart-add-one absolute bottom-1.5 right-1.5 z-10 w-8 h-8 flex items-center justify-center bg-white border-2 border-red-600 text-red-600 hover:bg-red-50 hover:border-red-700 cursor-pointer" title="Agregar una unidad">${plusSvg}</button>
       <div class="flex-1 min-w-0 p-3 flex flex-col order-2 md:order-1">
         <div class="relative">
           ${masVendido ? '<span class="inline-block px-2 py-0.5 bg-amber-100 text-amber-900 text-xs font-medium border border-amber-200 mb-1">Más vendido</span>' : ''}
           <h3 class="font-medium text-gray-900 line-clamp-2">${escapeHtml(typeof window.getProductDisplayName === 'function' ? window.getProductDisplayName(p) : (p.name || ''))}</h3>
           ${desc ? `<p class="text-sm text-gray-600 mt-0.5 line-clamp-2">${escapeHtml(desc)}</p>` : ''}
           <p class="text-red-600 font-medium mt-1">${formatCurrency(price)}</p>
-          ${hasOptions ? '<button type="button" class="product-ver-opciones mt-1 text-left text-sm text-red-600 font-medium hover:text-red-700 hover:underline">Ver opciones →</button>' : ''}
         </div>
       </div>
       <div class="product-card-image w-24 md:w-32 flex-shrink-0 self-stretch overflow-hidden bg-gray-100 rounded-none order-1 md:order-2 flex items-stretch">${productImageHtml(p)}</div>
     `;
     card.addEventListener('click', (e) => {
-      if (e.target.closest('.cart-add-one')) return;
-      if (e.target.closest('.product-ver-opciones')) {
-        e.preventDefault();
-        if (typeof window.showProductDetail === 'function') window.showProductDetail(p, { openOptions: true });
-        return;
-      }
+      if (e.target.closest('.cart-add-one') || e.target.closest('.cart-qty-inline')) return;
       if (typeof window.showProductDetail === 'function') window.showProductDetail(p);
     });
     const addBtn = card.querySelector('.cart-add-one');
     addBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      addBtn.classList.add('cart-add-one--pulse');
-      addBtn.addEventListener('animationend', function removePulse() {
-        addBtn.removeEventListener('animationend', removePulse);
-        addBtn.classList.remove('cart-add-one--pulse');
-      }, { once: true });
       if (hasOptions) {
+        addBtn.classList.add('cart-add-one--pulse');
+        addBtn.addEventListener('animationend', function removePulse() {
+          addBtn.removeEventListener('animationend', removePulse);
+          addBtn.classList.remove('cart-add-one--pulse');
+        }, { once: true });
         if (typeof window.showProductDetail === 'function') window.showProductDetail(p, { openOptions: true });
         if (typeof window.showView === 'function') window.showView('product');
-      } else {
-        addOneToCart(p);
+        return;
       }
+      showInlineQtyControl(card, addBtn, p, productSku, render);
     });
     return card;
+  }
+
+  function showInlineQtyControl(card, addBtn, p, productSku, onBack) {
+    const cart = window.cart;
+    const getQty = () => (typeof window.getCartQuantityForProduct === 'function' ? window.getCartQuantityForProduct(productSku) : 0);
+    const productName = (typeof window.getProductDisplayName === 'function' ? window.getProductDisplayName(p) : (p.name || '')) || '';
+    const price = p.price != null ? p.price : 0;
+
+    if (cart && getQty() === 0) {
+      cart.add(p.id, productName, price, 1, {});
+      if (typeof window.updateCartCount === 'function') window.updateCartCount();
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'cart-qty-inline absolute bottom-1.5 right-1.5 z-10 flex items-center bg-white border-2 border-red-600 overflow-hidden';
+    wrap.innerHTML = `
+      <button type="button" class="cart-qty-minus w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 font-light text-lg leading-none">−</button>
+      <span class="cart-qty-num min-w-[1.25rem] h-8 flex items-center justify-center text-sm font-medium text-gray-900">${getQty()}</span>
+      <button type="button" class="cart-qty-plus w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 font-light text-lg leading-none">+</button>
+    `;
+    const numSpan = wrap.querySelector('.cart-qty-num');
+    const minusBtn = wrap.querySelector('.cart-qty-minus');
+    const plusBtn = wrap.querySelector('.cart-qty-plus');
+
+    function updateDisplay() {
+      const qty = getQty();
+      numSpan.textContent = qty;
+      minusBtn.disabled = qty <= 0;
+    }
+
+    let backTimer = null;
+    function scheduleBack() {
+      if (backTimer) clearTimeout(backTimer);
+      backTimer = setTimeout(() => {
+        wrap.remove();
+        addBtn.style.display = '';
+        if (typeof onBack === 'function') onBack();
+        if (typeof window.updateCartCount === 'function') window.updateCartCount();
+      }, 2000);
+    }
+
+    minusBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!cart || getQty() <= 0) return;
+      cart.update(p.id, null, '', -1);
+      updateDisplay();
+      if (typeof window.updateCartCount === 'function') window.updateCartCount();
+      scheduleBack();
+    });
+    plusBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!cart) return;
+      const qty = getQty();
+      if (qty === 0) cart.add(p.id, productName, price, 1, {});
+      else cart.update(p.id, null, '', 1);
+      updateDisplay();
+      if (typeof window.updateCartCount === 'function') window.updateCartCount();
+      scheduleBack();
+    });
+
+    addBtn.style.display = 'none';
+    card.appendChild(wrap);
+    updateDisplay();
+    scheduleBack();
   }
 
   function renderProducts(list, categoryId) {

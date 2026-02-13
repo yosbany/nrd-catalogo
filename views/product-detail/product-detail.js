@@ -44,7 +44,7 @@
     addBtn.disabled = false;
     addBtn.classList.remove('opacity-70', 'cursor-not-allowed');
     addBtn.innerHTML = `
-      <span class="flex items-center justify-center w-7 h-7 rounded-full bg-white/25 text-white font-medium text-xs">${qty}</span>
+      <span class="flex items-center justify-center w-7 h-7 bg-white/25 text-white font-medium text-xs">${qty}</span>
       <span class="flex-1 text-center text-sm">Agregar a mi pedido</span>
       <span class="font-semibold text-sm">${formatCurrency(total)}</span>
     `;
@@ -81,6 +81,7 @@
     const hasVariants = variants.length > 0;
     const selectedVariant = null;
     const priceDisplay = price;
+    const initialQty = (typeof window.getCartQuantityForProduct === 'function' ? window.getCartQuantityForProduct(sku) : 0) || 1;
     const desc = (typeof window.getProductDescription === 'function' ? window.getProductDescription(product) : (product.description || (product.attributes && product.attributes.description) || '').trim());
     const optionLabel = (optCfg && optCfg.label) || 'Elegir opción *';
     const getVariantLabel = (v) => {
@@ -96,26 +97,26 @@
     content.innerHTML = `
       <div class="relative w-full h-[40vh] md:h-[45vh] overflow-hidden bg-gray-100 rounded-none">
         ${productImageHtml(product)}
-        <button type="button" id="product-back" class="absolute top-2 left-2 w-9 h-9 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 text-base font-light">✕</button>
+        <button type="button" id="product-back" class="absolute top-2 left-2 w-9 h-9 flex items-center justify-center bg-black/50 text-white hover:bg-black/70 text-base font-light">✕</button>
       </div>
       <div class="px-3 pt-2 pb-1">
         <h3 class="text-lg font-bold text-gray-900">${escapeHtml(typeof window.getProductDisplayName === 'function' ? window.getProductDisplayName(product) : (product.name || ''))}</h3>
         ${desc ? `<p class="text-xs text-gray-600 mt-0.5 line-clamp-2">${escapeHtml(desc)}</p>` : ''}
         <p id="product-price-display" class="text-lg font-bold text-gray-900 mt-1">${formatCurrency(priceDisplay)}</p>
         ${hasVariants ? `
-          <div class="mt-2 flex items-center justify-between p-2 border border-gray-300 rounded-lg bg-white">
+          <div class="mt-2 flex items-center justify-between p-2 border border-gray-300 bg-white">
             <span class="text-xs font-semibold text-gray-900">${escapeHtml(optionLabel)}</span>
-            <button type="button" id="product-variant-btn" class="py-1 px-2.5 text-xs text-gray-600 border border-gray-300 rounded-full hover:bg-gray-50">Seleccione</button>
+            <button type="button" id="product-variant-btn" class="py-1 px-2.5 text-xs text-gray-600 border border-gray-300 hover:bg-gray-50">Seleccione</button>
           </div>
           <div id="product-option-modal" class="fixed inset-0 bg-black/50 p-4 z-[100]" style="display: none; align-items: center; justify-content: center;">
-            <div class="bg-white rounded-lg w-full max-w-sm shadow-xl">
+            <div class="bg-white w-full max-w-sm shadow-xl">
               <div class="flex items-center gap-2 p-4 border-b border-gray-200">
-                <button type="button" id="product-option-modal-back" class="p-1 text-gray-600 hover:bg-gray-100 rounded">‹</button>
+                <button type="button" id="product-option-modal-back" class="p-1 text-gray-600 hover:bg-gray-100">‹</button>
                 <h3 class="font-semibold text-gray-900">${escapeHtml(optionLabel)}</h3>
               </div>
               <div class="p-4">
                 <p class="text-sm font-semibold text-gray-900 mb-3">Elige</p>
-                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <div class="border border-gray-200 overflow-hidden">
                   ${variants.map((v, i) => `<label class="flex items-center gap-3 p-3 border-b border-gray-200 last:border-b-0 cursor-pointer hover:bg-gray-50 product-option-radio">
                     <input type="radio" name="product-option-choice" value="${escapeHtml(String(v.id ?? v.sku ?? v.name ?? '').trim())}" data-price="${v.price != null ? v.price : 0}" class="text-red-600">
                     <span class="text-gray-900">${escapeHtml(getVariantLabel(v))} - ${formatCurrency(v.price)}</span>
@@ -123,21 +124,21 @@
                 </div>
               </div>
               <div class="p-4 border-t border-gray-200">
-                <button type="button" id="product-option-aceptar" class="w-full py-3 bg-red-600 text-white font-medium hover:bg-red-700 rounded-lg">Aceptar</button>
+                <button type="button" id="product-option-aceptar" class="w-full py-3 bg-red-600 text-white font-medium hover:bg-red-700">Aceptar</button>
               </div>
             </div>
           </div>
         ` : ''}
         <div class="flex items-center justify-between mt-2">
           <label class="text-xs font-semibold text-gray-900">Unidades</label>
-          <div class="flex items-center rounded-lg border border-gray-300 overflow-hidden">
+          <div class="flex items-center border border-gray-300 overflow-hidden">
             <button type="button" id="product-qty-minus" class="w-9 h-9 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-700 text-lg font-light">−</button>
-            <input type="number" id="product-qty" min="1" value="1" class="w-10 text-center py-1.5 text-sm border-0 border-x border-gray-300 focus:outline-none focus:ring-0">
+            <input type="number" id="product-qty" min="1" value="${initialQty}" class="w-10 text-center py-1.5 text-sm border-0 border-x border-gray-300 focus:outline-none focus:ring-0">
             <button type="button" id="product-qty-plus" class="w-9 h-9 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-700 text-lg font-light">+</button>
           </div>
         </div>
         <label class="block text-xs font-semibold text-gray-900 mt-2">Notas para este producto</label>
-        <textarea id="product-notes" maxlength="250" rows="2" placeholder="El local intentará seguirlas cuando lo prepare." class="mt-0.5 w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"></textarea>
+        <textarea id="product-notes" maxlength="250" rows="2" placeholder="El local intentará seguirlas cuando lo prepare." class="mt-0.5 w-full px-2.5 py-1.5 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"></textarea>
         <p id="product-notes-counter" class="text-[10px] text-gray-500 mt-0.5 text-right">0/250</p>
       </div>
     `;
@@ -224,7 +225,7 @@
       qtyEl.addEventListener('change', () => updateAddButton(addBtn, getQuantity(), getPrice() * getQuantity(), hasVariants && !getSelectedVariant()));
     }
 
-    updateAddButton(addBtn, 1, getPrice(), hasVariants && !getSelectedVariant());
+    updateAddButton(addBtn, initialQty, getPrice() * initialQty, hasVariants && !getSelectedVariant());
 
     addBtn.onclick = () => {
       if (hasVariants && !getSelectedVariant()) return;

@@ -27,36 +27,49 @@
 
   let activeOrderIndicatorUnsubscribe = null;
   function updateActiveOrderIndicator() {
-    const el = document.getElementById('nav-cart-active-indicator');
-    if (!el) return;
+    const navCart = document.getElementById('nav-cart');
+    if (!navCart) return;
     if (activeOrderIndicatorUnsubscribe) {
       activeOrderIndicatorUnsubscribe();
       activeOrderIndicatorUnsubscribe = null;
     }
     const activeOrderId = typeof window.getActiveOrderIdFromStorage === 'function' ? window.getActiveOrderIdFromStorage() : null;
     const nrd = window.nrd;
+
+    function setActiveOrderStyle(isActive) {
+      if (isActive) {
+        navCart.classList.remove('text-red-600', 'hover:text-red-700');
+        navCart.classList.add('text-amber-600', 'hover:text-amber-700', 'nav-cart--active-order');
+        navCart.title = 'Pedido en curso';
+      } else {
+        navCart.classList.remove('text-amber-600', 'hover:text-amber-700', 'nav-cart--active-order');
+        navCart.classList.add('text-red-600', 'hover:text-red-700');
+        navCart.title = 'Mi pedido';
+      }
+    }
+
     if (!activeOrderId) {
-      el.classList.add('hidden');
+      setActiveOrderStyle(false);
       return;
     }
     if (!nrd || !nrd.orders) {
-      el.classList.remove('hidden');
+      setActiveOrderStyle(true);
       return;
     }
     activeOrderIndicatorUnsubscribe = nrd.orders.onValueById(activeOrderId, function (order) {
       if (!order) {
         if (typeof window.clearActiveOrderIdFromStorage === 'function') window.clearActiveOrderIdFromStorage();
-        el.classList.add('hidden');
+        setActiveOrderStyle(false);
         return;
       }
       const status = (order.status || 'Pendiente').toLowerCase();
       const isPending = status !== 'completado' && status !== 'cancelado';
       if (!isPending) {
         if (typeof window.clearActiveOrderIdFromStorage === 'function') window.clearActiveOrderIdFromStorage();
-        el.classList.add('hidden');
+        setActiveOrderStyle(false);
         return;
       }
-      el.classList.remove('hidden');
+      setActiveOrderStyle(true);
     });
   }
 

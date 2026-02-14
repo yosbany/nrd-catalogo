@@ -78,6 +78,34 @@
     select.value = options[0];
   }
 
+  /** Devuelve true si hay horarios de retiro disponibles (select con valor HH:MM válido). */
+  function hasRetiroTimesAvailable() {
+    if (getDeliveryType() !== 'retiro') return true;
+    const select = document.getElementById('checkout-retiro-time');
+    if (!select) return false;
+    const val = (select.value || '').trim();
+    return /^\d{1,2}:\d{2}$/.test(val);
+  }
+
+  function updateConfirmButtonState() {
+    const storeOpen = typeof window.isStoreOpen === 'function' ? window.isStoreOpen() : true;
+    const isRetiro = getDeliveryType() === 'retiro';
+    const hasRetiroTimes = !isRetiro || hasRetiroTimesAvailable();
+    const canConfirm = storeOpen && hasRetiroTimes;
+    const confirmBtn = document.getElementById('checkout-confirm-btn');
+    if (!confirmBtn) return;
+    confirmBtn.disabled = !canConfirm;
+    confirmBtn.classList.toggle('opacity-50', !canConfirm);
+    confirmBtn.classList.toggle('cursor-not-allowed', !canConfirm);
+    if (!storeOpen) {
+      confirmBtn.textContent = 'Local cerrado — no se pueden finalizar pedidos';
+    } else if (isRetiro && !hasRetiroTimes) {
+      confirmBtn.textContent = 'Sin horarios de retiro disponibles';
+    } else {
+      confirmBtn.textContent = 'Confirmar pedido';
+    }
+  }
+
   function updateTotals() {
     const subtotal = window.cart ? window.cart.getSubtotal() : 0;
     const shipping = getShippingCost();
@@ -143,19 +171,12 @@
 
   window.renderCheckout = function () {
     preloadFromLastOrder();
-    const storeOpen = typeof window.isStoreOpen === 'function' ? window.isStoreOpen() : true;
-    const confirmBtn = document.getElementById('checkout-confirm-btn');
-    if (confirmBtn) {
-      confirmBtn.disabled = !storeOpen;
-      confirmBtn.classList.toggle('opacity-50', !storeOpen);
-      confirmBtn.classList.toggle('cursor-not-allowed', !storeOpen);
-      confirmBtn.textContent = storeOpen ? 'Confirmar pedido' : 'Local cerrado — no se pueden finalizar pedidos';
-    }
     const isEnvio = getDeliveryType() === 'envio';
     document.getElementById('checkout-address-wrap').classList.toggle('hidden', !isEnvio);
     const retiroTimeWrap = document.getElementById('checkout-retiro-time-wrap');
     if (retiroTimeWrap) retiroTimeWrap.classList.toggle('hidden', isEnvio);
     if (!isEnvio) updateRetiroTimeSelect();
+    updateConfirmButtonState();
     const payWrap = document.getElementById('checkout-payment-wrap');
     const payRequired = document.getElementById('checkout-payment-required');
     if (payWrap) payWrap.classList.toggle('hidden', !isEnvio);
@@ -174,6 +195,7 @@
         const retiroTimeWrap = document.getElementById('checkout-retiro-time-wrap');
         if (retiroTimeWrap) retiroTimeWrap.classList.toggle('hidden', isEnvio);
         if (!isEnvio) updateRetiroTimeSelect();
+        updateConfirmButtonState();
         const payWrap = document.getElementById('checkout-payment-wrap');
         const payRequired = document.getElementById('checkout-payment-required');
         if (payWrap) payWrap.classList.toggle('hidden', !isEnvio);
@@ -194,6 +216,7 @@
         const retiroTimeWrap = document.getElementById('checkout-retiro-time-wrap');
         if (retiroTimeWrap) retiroTimeWrap.classList.toggle('hidden', isEnvio);
         if (!isEnvio) updateRetiroTimeSelect();
+        updateConfirmButtonState();
         const payWrap = document.getElementById('checkout-payment-wrap');
         const payRequired = document.getElementById('checkout-payment-required');
         if (payWrap) payWrap.classList.toggle('hidden', !isEnvio);
@@ -211,22 +234,30 @@
     document.getElementById('checkout-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (typeof window.isStoreOpen === 'function' && !window.isStoreOpen()) {
-        alert('El local está cerrado en este momento. No se pueden finalizar pedidos hasta que abramos.');
+        if (typeof window.showAlert === 'function') window.showAlert('Local cerrado', 'El local está cerrado en este momento. No se pueden finalizar pedidos hasta que abramos.');
+        else alert('El local está cerrado en este momento. No se pueden finalizar pedidos hasta que abramos.');
         return;
       }
       const name = document.getElementById('checkout-name').value.trim();
       const phone = document.getElementById('checkout-phone').value.trim();
       if (!name || !phone) return;
       const type = getDeliveryType();
+      if (type === 'retiro' && !hasRetiroTimesAvailable()) {
+        if (typeof window.showAlert === 'function') window.showAlert('Horarios', 'No hay horarios de retiro disponibles en este momento. Elegí envío a domicilio o intentá más tarde.');
+        else alert('No hay horarios de retiro disponibles en este momento. Elegí envío a domicilio o intentá más tarde.');
+        return;
+      }
       const subtotal = window.cart.getSubtotal();
       const minimum = getMinimum();
       if (subtotal < minimum) {
-        alert('El pedido no alcanza el mínimo de ' + formatCurrency(minimum) + '. Agregá más productos.');
+        if (typeof window.showAlert === 'function') window.showAlert('Mínimo no alcanzado', 'El pedido no alcanza el mínimo de ' + formatCurrency(minimum) + '. Agregá más productos.');
+        else alert('El pedido no alcanza el mínimo de ' + formatCurrency(minimum) + '. Agregá más productos.');
         return;
       }
       const addressRaw = type === 'envio' ? document.getElementById('checkout-address').value.trim() : '';
       if (type === 'envio' && !addressRaw) {
-        alert('Ingresá la dirección de envío.');
+        if (typeof window.showAlert === 'function') window.showAlert('Dirección', 'Ingresá la dirección de envío.');
+        else alert('Ingresá la dirección de envío.');
         return;
       }
       const address = addressRaw;
@@ -245,7 +276,8 @@
       }
       const payment = type === 'envio' ? document.querySelector('input[name="payment"]:checked') : null;
       if (type === 'envio' && !payment) {
-        alert('Seleccioná un medio de pago.');
+        if (typeof window.showAlert === 'function') window.showAlert('Medio de pago', 'Seleccioná un medio de pago.');
+        else alert('Seleccioná un medio de pago.');
         return;
       }
       const notes = document.getElementById('checkout-notes').value.trim();
@@ -253,7 +285,8 @@
       const cashNote = payment && payment.value === 'efectivo' ? document.getElementById('checkout-cash').value.trim() : '';
       const nrd = window.nrd;
       if (!nrd || !nrd.orders) {
-        alert('No se puede enviar el pedido. Intentá más tarde.');
+        if (typeof window.showAlert === 'function') window.showAlert('Error', 'No se puede enviar el pedido. Intentá más tarde.');
+        else alert('No se puede enviar el pedido. Intentá más tarde.');
         return;
       }
       const shipping = getShippingCost();
@@ -267,7 +300,7 @@
         notes,
         envioLine,
         retiroLine,
-        type === 'envio' && payment ? ('Pago: ' + (payment.value === 'efectivo' ? 'Efectivo' + (cashNote ? ' (paga con $' + cashNote + ')' : '') : payment.value === 'pos' ? 'POS' : 'Mercado Pago')) : null,
+        type === 'envio' && payment ? ('Pago: ' + (payment.value === 'efectivo' ? 'Efectivo' + (cashNote ? ' (paga con $' + cashNote + ')' : '') : payment.value === 'pos' ? 'Tarjeta débito o crédito' : 'Mercado Pago')) : null,
         phone ? 'Tel: ' + phone : null
       ].filter(Boolean).join('\n');
 
@@ -351,20 +384,23 @@
         if (orderId && typeof window.setActiveOrderIdToStorage === 'function') {
           window.setActiveOrderIdToStorage(orderId);
         }
+        if (typeof window.updateActiveOrderIndicator === 'function') {
+          window.updateActiveOrderIndicator();
+        }
         var resumen = '*Nuevo pedido*\n\n';
         resumen += 'Cliente: ' + (name || '') + '\n';
         resumen += 'Tel: ' + (phone || '') + '\n';
         resumen += type === 'envio' ? 'Entrega: ' + (address || '') + '\n' : 'Retiro en local' + (retiroTime ? ' - ' + retiroTime : '') + '\n';
         if (type === 'envio' && payment) {
-          resumen += 'Pago: ' + (payment.value === 'efectivo' ? 'Efectivo' + (cashNote ? ' (paga con $' + cashNote + ')' : '') : payment.value === 'pos' ? 'POS' : 'Mercado Pago') + '\n';
+          resumen += 'Pago: ' + (payment.value === 'efectivo' ? 'Efectivo' + (cashNote ? ' (paga con $' + cashNote + ')' : '') : payment.value === 'pos' ? 'Tarjeta débito o crédito' : 'Mercado Pago') + '\n';
         }
         resumen += '\n*Pedido:*\n';
         (window.cart.items || []).forEach(function (i) {
           resumen += '• ' + (i.quantity || 0) + ' x ' + (i.productName || '') + ' - ' + formatCurrency((i.price || 0) * (i.quantity || 0)) + '\n';
         });
         resumen += '\nTotal: ' + formatCurrency(total) + '\n';
-        if (orderNotes && orderNotes.trim()) {
-          resumen += '\nObservaciones:\n' + orderNotes.replace(/<[^>]*>/g, '').trim() + '\n';
+        if (notes && notes.trim()) {
+          resumen += '\nObservaciones:\n' + notes.trim() + '\n';
         }
         try {
           window.open('https://wa.me/' + WHATSAPP_PANADERIA + '?text=' + encodeURIComponent(resumen), '_blank');
@@ -378,7 +414,8 @@
       } catch (err) {
         const msg = (err && err.message) ? err.message : String(err || 'Error desconocido');
         console.error('Error al enviar pedido:', err);
-        alert('Error al enviar el pedido: ' + msg + '. Intentá de nuevo.');
+        if (typeof window.showAlert === 'function') window.showAlert('Error', 'Error al enviar el pedido: ' + msg + '. Intentá de nuevo.');
+        else alert('Error al enviar el pedido: ' + msg + '. Intentá de nuevo.');
       }
     });
   };

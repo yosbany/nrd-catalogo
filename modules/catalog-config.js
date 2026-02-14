@@ -160,6 +160,7 @@ function getProductOptionConfig(product) {
     if (!option || !option.choices) continue;
     const variantSkus = opt.variantSkus || {};
     const disabledIds = Array.isArray(opt.disabledChoiceIds) ? opt.disabledChoiceIds : [];
+    const catalogPrices = opt.catalogPrices || {};
     const choices = option.choices
       .filter((c) => {
         const id = String(c.id || '').trim();
@@ -167,11 +168,17 @@ function getProductOptionConfig(product) {
         const sku = String(c.sku || '').trim();
         return !disabledIds.includes(id) && !disabledIds.includes(name) && !disabledIds.includes(sku);
       })
-      .map((c) => ({
-        id: c.id,
-        name: (c.commercialName && c.commercialName.trim()) ? c.commercialName.trim() : c.name,
-        variantSku: variantSkus[c.id] || variantSkus[c.name]
-      }))
+      .map((c) => {
+        const variantSku = variantSkus[c.id] || variantSkus[c.name];
+        const catalogPrice = catalogPrices[c.id] ?? catalogPrices[c.name];
+        const out = {
+          id: c.id,
+          name: (c.commercialName && c.commercialName.trim()) ? c.commercialName.trim() : c.name,
+          variantSku
+        };
+        if (catalogPrice != null && !Number.isNaN(Number(catalogPrice))) out.catalogPrice = Number(catalogPrice);
+        return out;
+      })
       .filter((c) => c.variantSku);
     if (choices.length > 0) result.push({ optionId: opt.optionId, label: option.label, choices });
   }

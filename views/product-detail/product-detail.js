@@ -72,7 +72,9 @@
       const ordered = optCfg.choices.map((c) => {
         const sku = String(c.variantSku || c.variantId || '').trim();
         const found = variants.find((v) => String(v.sku ?? v.id ?? v.name ?? '').trim() === sku);
-        const price = found && found.price != null ? found.price : basePrice;
+        const price = c.catalogPrice != null && !Number.isNaN(c.catalogPrice)
+          ? c.catalogPrice
+          : (found && found.price != null ? found.price : basePrice);
         return { sku, id: c.id || sku, name: c.name, price };
       }).filter((c) => c.sku);
       if (ordered.length > 0) variants = ordered;
@@ -236,7 +238,16 @@
       const productName = (typeof window.getProductDisplayName === 'function' ? window.getProductDisplayName(product) : (product.name || '')) || '';
       const variantId = v ? getVariantKey(v) : null;
       const variantName = v ? getVariantLabel(v) : null;
-      window.cart.add(product.id, productName, finalPrice, qty, { variantId, variantName, notes });
+      const notesKey = notes || '';
+      const key = variantId ? `${product.id}_${variantId}` : product.id;
+      const existing = window.cart.items.find(
+        (i) => (i.variantId ? `${i.productId}_${i.variantId}` : i.productId) === key && (i.notes || '') === notesKey
+      );
+      if (existing) {
+        window.cart.setQuantity(product.id, variantId, notesKey, qty);
+      } else {
+        window.cart.add(product.id, productName, finalPrice, qty, { variantId, variantName, notes });
+      }
       if (typeof window.setLastAddedProductToStorage === 'function') {
         window.setLastAddedProductToStorage({ productId: product.id, variantId });
       }

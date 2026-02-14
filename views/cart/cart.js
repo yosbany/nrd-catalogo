@@ -109,6 +109,7 @@
             if (activeOrderTimerInterval) { clearInterval(activeOrderTimerInterval); activeOrderTimerInterval = null; }
             if (typeof window.clearActiveOrderIdFromStorage === 'function') window.clearActiveOrderIdFromStorage();
             if (activeOrderEl) { activeOrderEl.classList.add('hidden'); activeOrderEl.innerHTML = ''; }
+            render();
             return;
           }
           const status = (order.status || 'Pendiente').toLowerCase();
@@ -123,6 +124,7 @@
             if (typeof window.clearActiveOrderIdFromStorage === 'function') window.clearActiveOrderIdFromStorage();
             activeOrderEl.classList.add('hidden');
             activeOrderEl.innerHTML = '';
+            render();
             return;
           }
           if (activeOrderTimerInterval) { clearInterval(activeOrderTimerInterval); activeOrderTimerInterval = null; }
@@ -217,21 +219,23 @@
       const row = document.createElement('div');
       row.className = 'flex items-center gap-2 py-2 px-2 sm:px-3 bg-white border border-gray-200';
       const notesKey = item.notes || '';
-      const trashSvg = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+      const trashSvg = '<svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
       row.innerHTML = `
-        <div class="w-16 flex-shrink-0 self-stretch min-h-[4rem] overflow-hidden bg-gray-100 flex">${cartItemImageHtml(item)}</div>
+        <div class="w-16 flex-shrink-0 self-stretch min-h-[4rem] overflow-hidden bg-gray-100 flex relative">
+          ${cartItemImageHtml(item)}
+          <button type="button" class="cart-remove absolute top-0.5 right-0.5 w-7 h-7 flex items-center justify-center rounded-full bg-white/95 text-gray-500 hover:text-red-600 hover:bg-red-50 shadow-sm border border-gray-200" data-idx="${idx}" title="Eliminar" aria-label="Eliminar">${trashSvg}</button>
+        </div>
         <div class="flex-1 min-w-0">
           <p class="font-medium text-gray-900 break-words">${escapeHtml(item.productName)}</p>
           ${notesKey ? `<p class="text-xs text-gray-500">${escapeHtml(notesKey)}</p>` : ''}
           <p class="text-sm text-gray-600">${formatCurrency(item.price)} × ${item.quantity} = <span class="font-bold">${formatCurrency((item.price || 0) * (item.quantity || 0))}</span></p>
         </div>
-        <div class="flex items-center gap-0.5 flex-shrink-0">
+        <div class="flex items-center flex-shrink-0">
           <div class="flex items-center border border-gray-300 overflow-hidden">
             <button type="button" class="cart-qty-minus w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-700 text-lg font-light" data-idx="${idx}">−</button>
             <span class="cart-qty w-8 text-center py-1 text-sm border-x border-gray-300 bg-white">${item.quantity}</span>
             <button type="button" class="cart-qty-plus w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-700 text-lg font-light" data-idx="${idx}">+</button>
           </div>
-          <button type="button" class="cart-remove w-8 h-8 flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-red-50 -ml-px" data-idx="${idx}" title="Eliminar">${trashSvg}</button>
         </div>
       `;
       row.querySelector('.cart-qty-minus').onclick = () => {
@@ -255,20 +259,33 @@
     if (subtotalEl) subtotalEl.textContent = formatCurrency(subtotal);
 
     const incentiveEl = document.getElementById('cart-incentive-msg');
+    const activeOrderCheckoutMsgEl = document.getElementById('cart-active-order-checkout-msg');
     if (items.length === 0) {
       if (minMsgEl) minMsgEl.classList.add('hidden');
+      if (activeOrderCheckoutMsgEl) activeOrderCheckoutMsgEl.classList.add('hidden');
       if (incentiveEl) {
         incentiveEl.textContent = 'Tu pedido está vacío. Agregá productos del catálogo y te lo llevamos o retirás en local.';
         incentiveEl.classList.remove('hidden');
       }
     } else {
       if (incentiveEl) incentiveEl.classList.add('hidden');
-      if (minMsgEl && minimum > 0 && subtotal < minimum) {
-        const missing = minimum - subtotal;
-        minMsgEl.textContent = 'Agregá ' + formatCurrency(missing) + ' para alcanzar el mínimo de envío.';
-        minMsgEl.classList.remove('hidden');
-      } else if (minMsgEl) {
-        minMsgEl.classList.add('hidden');
+      const belowMinimum = minimum > 0 && subtotal < minimum;
+      if (belowMinimum) {
+        if (minMsgEl) {
+          const missing = minimum - subtotal;
+          minMsgEl.textContent = 'Agregá ' + formatCurrency(missing) + ' para alcanzar el mínimo de envío.';
+          minMsgEl.classList.remove('hidden');
+        }
+        if (activeOrderCheckoutMsgEl) activeOrderCheckoutMsgEl.classList.add('hidden');
+      } else if (activeOrderId) {
+        if (minMsgEl) minMsgEl.classList.add('hidden');
+        if (activeOrderCheckoutMsgEl) {
+          activeOrderCheckoutMsgEl.textContent = 'Tenés un pedido en curso. Esperá a que se complete antes de finalizar otro.';
+          activeOrderCheckoutMsgEl.classList.remove('hidden');
+        }
+      } else {
+        if (minMsgEl) minMsgEl.classList.add('hidden');
+        if (activeOrderCheckoutMsgEl) activeOrderCheckoutMsgEl.classList.add('hidden');
       }
     }
 
@@ -282,7 +299,8 @@
         checkoutBtn.classList.remove('hidden');
         const meetsMinimum = minimum <= 0 || subtotal >= minimum;
         const storeOpen = typeof window.isStoreOpen === 'function' ? window.isStoreOpen() : true;
-        const canCheckout = meetsMinimum && storeOpen;
+        const noActiveOrder = !activeOrderId;
+        const canCheckout = meetsMinimum && storeOpen && noActiveOrder;
         checkoutBtn.disabled = !canCheckout;
         checkoutBtn.classList.toggle('opacity-50', !canCheckout);
         checkoutBtn.classList.toggle('cursor-not-allowed', !canCheckout);
@@ -447,8 +465,15 @@
     });
     document.getElementById('cart-checkout').addEventListener('click', () => {
       if (!window.cart || window.cart.items.length === 0) return;
+      const activeOrderId = typeof window.getActiveOrderIdFromStorage === 'function' ? window.getActiveOrderIdFromStorage() : null;
+      if (activeOrderId) {
+        if (typeof window.showAlert === 'function') window.showAlert('Pedido en curso', 'Tenés un pedido en curso. Esperá a que se complete antes de finalizar otro.');
+        else alert('Tenés un pedido en curso. Esperá a que se complete antes de finalizar otro.');
+        return;
+      }
       if (typeof window.isStoreOpen === 'function' && !window.isStoreOpen()) {
-        alert('El local está cerrado en este momento. No se pueden finalizar pedidos hasta que abramos.');
+        if (typeof window.showAlert === 'function') window.showAlert('Local cerrado', 'El local está cerrado en este momento. No se pueden finalizar pedidos hasta que abramos.');
+        else alert('El local está cerrado en este momento. No se pueden finalizar pedidos hasta que abramos.');
         return;
       }
       const config = window.getCatalogConfig ? window.getCatalogConfig() : {};
@@ -456,7 +481,8 @@
       const subtotal = window.cart.getSubtotal();
       if (minimum > 0 && subtotal < minimum) {
         const missing = minimum - subtotal;
-        alert('Agregá ' + formatCurrency(missing) + ' más para alcanzar el mínimo de ' + formatCurrency(minimum) + '.');
+        if (typeof window.showAlert === 'function') window.showAlert('Mínimo no alcanzado', 'Agregá ' + formatCurrency(missing) + ' más para alcanzar el mínimo de ' + formatCurrency(minimum) + '.');
+        else alert('Agregá ' + formatCurrency(missing) + ' más para alcanzar el mínimo de ' + formatCurrency(minimum) + '.');
         return;
       }
       window.showView('checkout');

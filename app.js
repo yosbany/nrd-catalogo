@@ -25,6 +25,41 @@
     el.classList.toggle('hidden', n === 0);
   }
 
+  let activeOrderIndicatorUnsubscribe = null;
+  function updateActiveOrderIndicator() {
+    const el = document.getElementById('nav-cart-active-indicator');
+    if (!el) return;
+    if (activeOrderIndicatorUnsubscribe) {
+      activeOrderIndicatorUnsubscribe();
+      activeOrderIndicatorUnsubscribe = null;
+    }
+    const activeOrderId = typeof window.getActiveOrderIdFromStorage === 'function' ? window.getActiveOrderIdFromStorage() : null;
+    const nrd = window.nrd;
+    if (!activeOrderId) {
+      el.classList.add('hidden');
+      return;
+    }
+    if (!nrd || !nrd.orders) {
+      el.classList.remove('hidden');
+      return;
+    }
+    activeOrderIndicatorUnsubscribe = nrd.orders.onValueById(activeOrderId, function (order) {
+      if (!order) {
+        if (typeof window.clearActiveOrderIdFromStorage === 'function') window.clearActiveOrderIdFromStorage();
+        el.classList.add('hidden');
+        return;
+      }
+      const status = (order.status || 'Pendiente').toLowerCase();
+      const isPending = status !== 'completado' && status !== 'cancelado';
+      if (!isPending) {
+        if (typeof window.clearActiveOrderIdFromStorage === 'function') window.clearActiveOrderIdFromStorage();
+        el.classList.add('hidden');
+        return;
+      }
+      el.classList.remove('hidden');
+    });
+  }
+
   document.getElementById('nav-home').addEventListener('click', (e) => { e.preventDefault(); showView('home'); });
   document.getElementById('nav-cart').addEventListener('click', (e) => { e.preventDefault(); showView('cart'); });
 
@@ -76,6 +111,7 @@
   window.getCompanyInfo = () => companyInfo;
   window.setCompanyInfo = (c) => { companyInfo = c; };
   window.updateCartCount = updateCartCount;
+  window.updateActiveOrderIndicator = updateActiveOrderIndicator;
   window.showAlert = showAlert;
 
   if (window.cart) window.cart.onChange(updateCartCount);
@@ -169,6 +205,7 @@
       if (typeof window.initCheckout === 'function') window.initCheckout();
       if (typeof window.initSuccess === 'function') window.initSuccess();
       updateCartCount();
+      updateActiveOrderIndicator();
     } finally {
       if (overlay) overlay.classList.add('hidden');
     }

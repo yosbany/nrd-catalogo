@@ -77,21 +77,22 @@
 <body class="bg-gray-100 text-gray-900 font-sans antialiased min-h-screen">
   <div id="app" class="min-h-screen flex flex-col max-w-4xl mx-auto">
     <!-- Header -->
-    <header class="bg-red-50 border-b border-red-100 px-4 py-3 sticky top-0 z-20">
-      <div class="flex justify-between items-center gap-4">
+    <header class="bg-red-50 border-b border-red-100 px-4 py-2 sticky top-0 z-20">
+      <div class="flex justify-between items-stretch gap-4">
         <a href="#" id="nav-home" class="flex items-center gap-3 min-w-0 flex-1">
-          <img id="header-logo" src="assets/icons/icon-192.png" alt="" class="w-12 h-12 object-contain flex-shrink-0" loading="lazy">
+          <img id="header-logo" src="assets/icons/icon-192.png" alt="" class="h-full min-h-[2.5rem] max-h-16 w-auto object-contain flex-shrink-0 self-stretch" loading="lazy">
           <div class="min-w-0">
-            <h1 id="header-business-name" class="font-bold text-gray-900 text-base truncate">-</h1>
+            <h1 id="header-business-name" class="font-bold text-gray-900 text-lg truncate">-</h1>
             <p id="header-delivery-info" class="text-xs text-gray-600 mt-0.5">-</p>
           </div>
         </a>
-        <a href="#" id="nav-cart" class="flex-shrink-0 flex flex-col items-center text-red-600 hover:text-red-700">
+        <a href="#" id="nav-cart" class="flex-shrink-0 flex flex-col items-center text-red-600 hover:text-red-700 relative">
           <div class="flex items-center justify-center gap-1">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
             <span id="cart-count" class="hidden bg-red-100 text-red-600 px-1.5 py-0.5 text-xs font-bold min-w-[1.25rem] text-center">0</span>
           </div>
           <span class="text-xs font-medium mt-0.5">Mi pedido</span>
+          <span id="nav-cart-active-indicator" class="hidden absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500 animate-pulse" title="Pedido en curso" aria-label="Pedido en curso"></span>
         </a>
       </div>
     </header>
@@ -168,6 +169,7 @@
         <div id="cart-items" class="space-y-2 mb-4"></div>
         <div id="cart-incentive-msg" class="hidden p-3 bg-green-50 border border-green-200 border-l-4 border-l-green-600 text-sm text-green-900 mb-4"></div>
         <div id="cart-minimum-msg" class="hidden p-3 bg-red-50 border border-red-100 border-l-4 border-l-red-600 text-sm text-red-900 mb-4"></div>
+        <div id="cart-active-order-checkout-msg" class="hidden p-3 bg-red-50 border border-red-100 border-l-4 border-l-red-600 text-sm text-red-900 mb-4"></div>
         <section class="pt-4 pb-4 border-b border-gray-200" id="cart-suggestions-section">
           <div class="flex justify-between items-baseline gap-2 mb-3">
             <h3 class="text-base font-semibold text-gray-900">¿Te tienta algo más?</h3>
@@ -252,7 +254,7 @@
               </div>
               <label class="flex items-center gap-2 p-2 border border-gray-300 cursor-pointer hover:bg-gray-50 checkout-payment-option">
                 <input type="radio" name="payment" value="pos" class="text-red-600">
-                <span>POS (tarjeta)</span>
+                <span>Tarjeta débito o crédito</span>
               </label>
               <label class="flex items-center gap-2 p-2 border border-gray-300 cursor-pointer hover:bg-gray-50 checkout-payment-option">
                 <input type="radio" name="payment" value="mercadopago" class="text-red-600">

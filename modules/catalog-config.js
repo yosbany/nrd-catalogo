@@ -40,7 +40,10 @@ function setCatalogConfig(remote) {
   if (remote.shippingCost != null) catalogState.shippingCost = Number(remote.shippingCost);
   if (remote.minimumForShipping != null) catalogState.minimumForShipping = Number(remote.minimumForShipping);
   if (remote.estimatedMinutes != null) catalogState.estimatedMinutes = String(remote.estimatedMinutes);
-  if (remote.brandName != null) catalogState.brandName = String(remote.brandName).trim() || DEFAULT_CONFIG.brandName;
+  if (remote.brandName != null) {
+    const raw = String(remote.brandName).trim();
+    catalogState.brandName = raw ? raw.replace(/\bDor\b/gi, "D'or") : DEFAULT_CONFIG.brandName;
+  }
   if (remote.tagline != null) catalogState.tagline = String(remote.tagline).trim() || DEFAULT_CONFIG.tagline;
   if (remote.storeOpenTime != null) catalogState.storeOpenTime = String(remote.storeOpenTime).trim() || DEFAULT_CONFIG.storeOpenTime;
   if (remote.storeCloseTime != null) catalogState.storeCloseTime = String(remote.storeCloseTime).trim() || DEFAULT_CONFIG.storeCloseTime;

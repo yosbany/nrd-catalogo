@@ -77,16 +77,16 @@
 <body class="bg-gray-100 text-gray-900 font-sans antialiased min-h-screen">
   <div id="app" class="min-h-screen flex flex-col max-w-4xl mx-auto">
     <!-- Header -->
-    <header class="bg-red-50 border-b border-red-100 px-4 py-2 sticky top-0 z-20">
-      <div class="flex justify-between items-stretch gap-4">
-        <a href="#" id="nav-home" class="flex items-center gap-3 min-w-0 flex-1">
-          <img id="header-logo" src="assets/icons/icon-192.png" alt="" class="h-full min-h-[2.5rem] max-h-16 w-auto object-contain flex-shrink-0 self-stretch" loading="lazy">
+    <header class="bg-red-50 border-b border-red-100 pl-2 pr-3 py-1 sticky top-0 z-20">
+      <div class="flex justify-between items-stretch gap-3 min-h-[3.5rem]">
+        <a href="#" id="nav-home" class="flex items-center gap-0.5 min-w-0 flex-1">
+          <img id="header-logo" src="assets/icons/icon-192.png" alt="" class="h-full min-h-[3rem] max-h-20 w-auto object-contain flex-shrink-0 self-stretch" loading="lazy">
           <div class="min-w-0">
             <h1 id="header-business-name" class="font-bold text-gray-900 text-lg truncate">-</h1>
             <p id="header-delivery-info" class="text-xs text-gray-600 mt-0.5">-</p>
           </div>
         </a>
-        <a href="#" id="nav-cart" class="flex-shrink-0 flex flex-col items-center text-red-600 hover:text-red-700 relative">
+        <a href="#" id="nav-cart" class="flex-shrink-0 flex flex-col items-center justify-center text-red-600 hover:text-red-700 relative">
           <div class="flex items-center justify-center gap-1">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
             <span id="cart-count" class="hidden bg-red-100 text-red-600 px-1.5 py-0.5 text-xs font-bold min-w-[1.25rem] text-center">0</span>

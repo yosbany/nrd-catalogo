@@ -63,12 +63,18 @@
   document.getElementById('nav-home').addEventListener('click', (e) => { e.preventDefault(); showView('home'); });
   document.getElementById('nav-cart').addEventListener('click', (e) => { e.preventDefault(); showView('cart'); });
 
+  function fixDor(name) {
+    if (!name || typeof name !== 'string') return name;
+    return name.replace(/\bDor\b/gi, "D'or");
+  }
+
   function updateHeader() {
     const cfg = typeof window.getCatalogConfig === 'function' ? window.getCatalogConfig() : {};
     const businessEl = document.getElementById('header-business-name');
     const deliveryEl = document.getElementById('header-delivery-info');
     const logoEl = document.getElementById('header-logo');
-    if (businessEl) businessEl.textContent = (companyInfo && companyInfo.tradeName) ? companyInfo.tradeName : (cfg.brandName || "Nueva Río D'or");
+    const raw = (companyInfo && companyInfo.tradeName) ? companyInfo.tradeName : (cfg.brandName || "Nueva Río D'or");
+    if (businessEl) businessEl.textContent = fixDor(raw);
     if (deliveryEl) {
       const min = cfg.estimatedMinutes || '30-45';
       const ship = cfg.shippingCost != null ? Math.round(cfg.shippingCost).toLocaleString('es-UY') : '-';

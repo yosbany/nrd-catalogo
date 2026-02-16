@@ -4,75 +4,49 @@
   <meta charset="UTF-8">
   <base href="./">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Catálogo y pedidos - Panadería Nueva Río D'or">
-  <title>Nueva Río D'or - Pedidos</title>
+  <title>Catálogo online | Panadería Nueva Río D'or</title>
+  <meta name="description" content="Catálogo online para hacer pedidos a Panadería Nueva Río D'or. Panes, bizcochos, empanadas, postres y opciones de lunch para eventos en Montevideo.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <link rel="canonical" href="https://catalogo.nrdonline.site/">
+  <link rel="alternate" hreflang="es-UY" href="https://catalogo.nrdonline.site/">
+
+  <!-- Open Graph / Social -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Panadería Nueva Río D'or">
+  <meta property="og:title" content="Catálogo online | Panadería Nueva Río D'or">
+  <meta property="og:description" content="Catálogo online para hacer pedidos. Panes, bizcochos, empanadas, postres y lunch para eventos.">
+  <meta property="og:url" content="https://catalogo.nrdonline.site/">
+  <meta property="og:image" content="https://catalogo.nrdonline.site/assets/icons/icon-512.png">
+  <meta property="og:locale" content="es_UY">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Catálogo online | Panadería Nueva Río D'or">
+  <meta name="twitter:description" content="Catálogo online para hacer pedidos.">
+  <meta name="twitter:image" content="https://catalogo.nrdonline.site/assets/icons/icon-512.png">
+
+  <!-- Structured data -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Catálogo online | Panadería Nueva Río D'or",
+      "url": "https://catalogo.nrdonline.site/",
+      "applicationCategory": "ShoppingApplication",
+      "operatingSystem": "All",
+      "inLanguage": "es-UY",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Panadería Nueva Río D'or",
+        "url": "https://web.nrdonline.site/"
+      }
+    }
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="assets/styles/styles.css?v=1770991063828">
+  <link rel="stylesheet" href="assets/styles/styles.css">
   <meta name="theme-color" content="#dc2626">
   <link rel="manifest" href="manifest.json">
-  <link rel="shortcut icon" type="image/png" href="assets/icons/icon-192.png?v=1770991063828">
-  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=1770991063828">
-  <link rel="apple-touch-icon" href="assets/icons/icon-192.png?v=1770991063828">
-  <script>window.CATALOG_CACHE_VERSION = '1770991063828';</script>
-
-  <!-- Validate version against server: if server has newer build, force reload to avoid stale cache -->
-  <script>
-    (function() {
-      var link = document.querySelector('link[rel="stylesheet"][href*=".css"]');
-      var localVersion = link && link.href.match(/[?&]v=(\d+)/) ? link.href.match(/[?&]v=(\d+)/)[1] : null;
-      var urlParams = new URLSearchParams(window.location.search);
-      var urlVersion = urlParams.get('v');
-
-      function applyUrlSync() {
-        if (urlVersion !== localVersion && localVersion) {
-          if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(regs) {
-              regs.forEach(function(r) { r.unregister(); });
-            });
-          }
-          if ('caches' in window) {
-            caches.keys().then(function(names) {
-              names.forEach(function(n) { caches.delete(n); });
-            });
-          }
-          var url = new URL(window.location.href);
-          url.searchParams.set('v', localVersion);
-          window.location.replace(url.toString());
-        }
-      }
-
-      if (!localVersion) {
-        applyUrlSync();
-        return;
-      }
-
-      fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
-        .then(function(r) { return r.ok ? r.json() : null; })
-        .then(function(data) {
-          if (data && data.v != null) {
-            var serverVersion = String(data.v);
-            if (serverVersion !== localVersion) {
-              if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(function(regs) {
-                  regs.forEach(function(r) { r.unregister(); });
-                });
-              }
-              if ('caches' in window) {
-                caches.keys().then(function(names) {
-                  names.forEach(function(n) { caches.delete(n); });
-                });
-              }
-              var url = new URL(window.location.href);
-              url.searchParams.set('v', serverVersion);
-              window.location.replace(url.toString());
-              return;
-            }
-          }
-          applyUrlSync();
-        })
-        .catch(function() { applyUrlSync(); });
-    })();
-  </script>
+  <link rel="shortcut icon" type="image/png" href="assets/icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
 </head>
 <body class="bg-gray-100 text-gray-900 font-sans antialiased min-h-screen">
   <div id="app" class="min-h-screen flex flex-col max-w-4xl mx-auto">
@@ -320,17 +294,17 @@
     window.nrd = typeof NRDDataAccess !== 'undefined' ? new NRDDataAccess() : null;
     if (!window.nrd) console.error('NRDDataAccess no cargó. Verifica la ruta a nrd-data-access.');
   </script>
-  <script src="modules/storage.js?v=1770991063828"></script>
-  <script src="modules/cart.js?v=1770991063828"></script>
-  <script src="modules/address-validation.js?v=1770991063828"></script>
-  <script src="modules/catalog-config.js?v=1770991063828"></script>
-  <script src="views/home/home.js?v=1770991063828"></script>
-  <script src="views/catalog/catalog.js?v=1770991063828"></script>
-  <script src="views/product-detail/product-detail.js?v=1770991063828"></script>
-  <script src="views/cart/cart.js?v=1770991063828"></script>
-  <script src="views/checkout/checkout.js?v=1770991063828"></script>
-  <script src="views/success/success.js?v=1770991063828"></script>
-  <script src="app.js?v=1770991063828"></script>
+  <script src="modules/storage.js"></script>
+  <script src="modules/cart.js"></script>
+  <script src="modules/address-validation.js"></script>
+  <script src="modules/catalog-config.js"></script>
+  <script src="views/home/home.js"></script>
+  <script src="views/catalog/catalog.js"></script>
+  <script src="views/product-detail/product-detail.js"></script>
+  <script src="views/cart/cart.js"></script>
+  <script src="views/checkout/checkout.js"></script>
+  <script src="views/success/success.js"></script>
+  <script src="app.js"></script>
   <script>
     (function () {
       var base = document.querySelector('base');

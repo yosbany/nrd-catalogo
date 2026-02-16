@@ -281,9 +281,8 @@ function getDefaultProductImageUrl() {
 
 function assetUrl(path) {
   if (!path) return '';
-  const v = (typeof window !== 'undefined' && window.CATALOG_CACHE_VERSION) || Date.now();
-  const sep = path.includes('?') ? '&' : '?';
-  return path + sep + 'v=' + v;
+  // Cache busting disabled for this project (keep URLs clean)
+  return String(path);
 }
 
 /** Sobrescribe envío y datos de negocio desde companyInfo (API). */

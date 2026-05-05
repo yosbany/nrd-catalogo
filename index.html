@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <base href="./">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo online | Panadería Nueva Río D'or</title>
+  <meta name="description" content="Catálogo online para hacer pedidos a Panadería Nueva Río D'or. Panes, bizcochos, empanadas, postres y opciones de lunch para eventos en Montevideo.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <link rel="canonical" href="https://catalogo.nrdonline.site/">
+  <link rel="alternate" hreflang="es-UY" href="https://catalogo.nrdonline.site/">
+
+  <!-- Open Graph / Social -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Panadería Nueva Río D'or">
+  <meta property="og:title" content="Catálogo online | Panadería Nueva Río D'or">
+  <meta property="og:description" content="Catálogo online para hacer pedidos. Panes, bizcochos, empanadas, postres y lunch para eventos.">
+  <meta property="og:url" content="https://catalogo.nrdonline.site/">
+  <meta property="og:image" content="https://catalogo.nrdonline.site/assets/icons/icon-512.png">
+  <meta property="og:locale" content="es_UY">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Catálogo online | Panadería Nueva Río D'or">
+  <meta name="twitter:description" content="Catálogo online para hacer pedidos.">
+  <meta name="twitter:image" content="https://catalogo.nrdonline.site/assets/icons/icon-512.png">
+
+  <!-- Structured data -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Catálogo online | Panadería Nueva Río D'or",
+      "url": "https://catalogo.nrdonline.site/",
+      "applicationCategory": "ShoppingApplication",
+      "operatingSystem": "All",
+      "inLanguage": "es-UY",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Panadería Nueva Río D'or",
+        "url": "https://web.nrdonline.site/"
+      }
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/styles/styles.css">
+  <meta name="theme-color" content="#dc2626">
+  <link rel="manifest" href="manifest.json">
+  <link rel="shortcut icon" type="image/png" href="assets/icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+</head>
+<body class="bg-gray-100 text-gray-900 font-sans antialiased min-h-screen">
+  <div id="app" class="min-h-screen flex flex-col max-w-4xl mx-auto">
+    <!-- Header -->
+    <header class="bg-red-50 border-b border-red-100 pl-2 pr-3 py-1 sticky top-0 z-20">
+      <div class="flex justify-between items-stretch gap-3 min-h-[3.5rem]">
+        <a href="#" id="nav-home" class="flex items-center gap-0.5 min-w-0 flex-1">
+          <img id="header-logo" src="assets/icons/icon-192.png" alt="" class="h-full min-h-[3rem] max-h-20 w-auto object-contain flex-shrink-0 self-stretch" loading="lazy">
+          <div class="min-w-0">
+            <h1 id="header-business-name" class="font-bold text-gray-900 text-base leading-tight break-words">-</h1>
+            <p id="header-delivery-info" class="text-xs text-gray-600 mt-0.5">-</p>
+          </div>
+        </a>
+        <a href="#" id="nav-cart" class="flex-shrink-0 flex flex-col items-center justify-center text-red-600 hover:text-red-700 relative" title="Mi pedido">
+          <div class="flex items-center justify-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+            <span id="cart-count" class="hidden bg-red-100 text-red-600 px-1.5 py-0.5 text-xs font-bold min-w-[1.25rem] text-center">0</span>
+          </div>
+          <span class="text-xs font-medium mt-0.5">Mi pedido</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Banner instalar app: solo al cargar desde un enlace (referrer externo o ?install=1); el diálogo nativo se abre al clic -->
+    <div id="pwa-install-banner" class="hidden fixed bottom-0 left-0 right-0 z-30 bg-red-600 text-white px-4 py-3 flex items-center justify-between gap-3 shadow-lg max-w-4xl mx-auto">
+      <span class="text-sm">¿Abrir en la app?</span>
+      <div class="flex gap-2 flex-shrink-0">
+        <button type="button" id="pwa-install-dismiss" class="px-3 py-1.5 text-sm border border-white/80">Ahora no</button>
+        <button type="button" id="pwa-install-btn" class="px-3 py-1.5 text-sm bg-white text-red-600 font-medium">Instalar</button>
+      </div>
+    </div>
+
+    <!-- Main content: views -->
+    <main class="flex-1 p-4 pb-8 bg-white">
+      <!-- Home -->
+      <div id="view-home" class="view">
+        <div id="store-closed-banner" class="hidden mb-3 px-4 py-3 bg-amber-500 text-amber-900 font-medium text-center border-2 border-amber-600 shadow">
+          Local cerrado en este momento. Los pedidos se atenderán cuando estemos abiertos.
+        </div>
+        <div class="mb-3">
+          <input type="search" id="home-search" placeholder="Buscar productos..." autocomplete="off"
+            class="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
+        </div>
+        <div class="flex flex-nowrap items-center justify-start gap-2 mb-4">
+          <div class="relative w-auto flex-initial" id="home-section-wrap">
+            <button type="button" id="home-section-btn" class="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 whitespace-nowrap">
+              <span id="home-section-btn-text" class="truncate max-w-[8rem]">Todos</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div id="home-section-dropdown" class="hidden absolute top-full left-0 mt-1 min-w-[10rem] max-h-60 overflow-y-auto bg-white border border-gray-200 shadow-lg z-20 py-1">
+              <!-- opciones rellenadas por JS -->
+            </div>
+          </div>
+          <button type="button" id="home-sort-price-btn" class="inline-flex items-center gap-1.5 px-2.5 py-2 border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 flex-shrink-0 whitespace-nowrap">
+            <span id="home-sort-price-btn-icon" aria-hidden="true"><!-- icono up/down según estado, rellenado por JS --></span>
+            <span id="home-sort-price-btn-text">Más bajo primero</span>
+          </button>
+        </div>
+        <div id="home-products" class="space-y-2">
+          <!-- product cards filled by JS -->
+        </div>
+      </div>
+
+      <!-- Product list (filtered by category) -->
+      <div id="view-catalog" class="view hidden">
+        <div class="flex items-center gap-2 mb-4 border-b border-gray-200 pb-3">
+          <button type="button" id="catalog-back" class="p-2 text-gray-600 hover:bg-gray-100 border border-gray-300">‹</button>
+          <h2 id="catalog-title" class="text-lg font-semibold">Productos</h2>
+        </div>
+        <div id="catalog-products" class="space-y-2"></div>
+      </div>
+
+      <!-- Product detail -->
+      <div id="view-product" class="view hidden -mx-4 -mt-4">
+        <div id="product-content" class="border-0">
+          <!-- filled by JS: image with close overlay, info, etc -->
+        </div>
+        <div class="mt-2 px-3 pb-2">
+          <button type="button" id="product-add-cart" class="w-full py-2.5 px-3 bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors border border-red-700 flex items-center justify-between gap-2">
+            <!-- filled by product-detail.js -->
+          </button>
+        </div>
+      </div>
+
+      <!-- Cart -->
+      <div id="view-cart" class="view hidden">
+        <div class="flex items-center gap-2 mb-4 border-b border-gray-200 pb-3">
+          <button type="button" id="cart-back-btn" class="flex items-center justify-center w-10 h-10 text-gray-600 hover:text-red-600 hover:bg-red-50" title="Regresar atrás" aria-label="Regresar atrás">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </button>
+          <h2 class="text-lg font-semibold text-gray-900 flex-1">Mi pedido</h2>
+        </div>
+        <div id="cart-items" class="space-y-2 mb-4"></div>
+        <div id="cart-incentive-msg" class="hidden p-3 bg-green-50 border border-green-200 border-l-4 border-l-green-600 text-sm text-green-900 mb-4"></div>
+        <div id="cart-minimum-msg" class="hidden p-3 bg-red-50 border border-red-100 border-l-4 border-l-red-600 text-sm text-red-900 mb-4"></div>
+        <div id="cart-active-order-checkout-msg" class="hidden p-3 bg-red-50 border border-red-100 border-l-4 border-l-red-600 text-sm text-red-900 mb-4"></div>
+        <section class="pt-4 pb-4 border-b border-gray-200" id="cart-suggestions-section">
+          <div class="flex justify-between items-baseline gap-2 mb-3">
+            <h3 class="text-base font-semibold text-gray-900">¿Te tienta algo más?</h3>
+            <p class="text-xs text-gray-600 flex-shrink-0">Subtotal <span id="cart-suggestions-subtotal">$ 0</span></p>
+          </div>
+          <div id="cart-suggestions" class="flex gap-3 overflow-x-auto pb-2 -mx-1 scroll-smooth snap-x snap-mandatory" style="scrollbar-width: thin;">
+            <!-- carrusel de productos del catálogo configurado, rellenado por JS -->
+          </div>
+        </section>
+        <div class="border-t border-gray-200 pt-4 pb-4">
+          <p class="flex justify-between text-gray-900 font-bold"><span>Subtotal</span><span id="cart-subtotal">$ 0</span></p>
+        </div>
+        <div class="flex gap-3 pt-2 pb-6">
+          <a href="#" id="cart-continue" class="flex-1 py-3 px-4 border border-gray-300 text-center hover:bg-gray-50 text-gray-700 font-medium inline-flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            Seguir comprando
+          </a>
+          <button type="button" id="cart-checkout" class="flex-1 py-3 px-4 bg-red-600 text-white hover:bg-red-700 border border-red-700 font-medium inline-flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Finalizar pedido
+          </button>
+        </div>
+        <div id="cart-active-order" class="hidden pt-4 mt-4 border-t border-gray-200"></div>
+        <div id="cart-last-orders" class="hidden pt-6 mt-6 border-t border-gray-200"></div>
+      </div>
+
+      <!-- Checkout -->
+      <div id="view-checkout" class="view hidden">
+        <h2 class="text-lg font-semibold mb-4 border-b border-gray-200 pb-3">Finalizar pedido</h2>
+        <form id="checkout-form" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de entrega</label>
+            <div class="flex gap-2">
+              <label class="flex-1 flex flex-col items-center justify-center gap-1.5 p-3 border-2 border-gray-300 cursor-pointer checkout-type-option has-border" data-type="envio">
+                <input type="radio" name="deliveryType" value="envio" class="sr-only" checked>
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 flex-shrink-0 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                <span>Envío a domicilio</span>
+              </label>
+              <label class="flex-1 flex flex-col items-center justify-center gap-1.5 p-3 border-2 border-gray-300 cursor-pointer checkout-type-option" data-type="retiro">
+                <input type="radio" name="deliveryType" value="retiro" class="sr-only">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 flex-shrink-0 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span>Retiro en local</span>
+              </label>
+            </div>
+          </div>
+          <div id="checkout-retiro-time-wrap">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Horario de retiro</label>
+            <select id="checkout-retiro-time" class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500" aria-label="Horario de retiro en formato 24 horas">
+              <!-- Opciones desde (hora actual + 1) hasta cierre, formato 24h; se rellenan por JS -->
+            </select>
+          </div>
+          <div id="checkout-address-wrap" class="hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+            <input type="text" id="checkout-address" placeholder="Calle, número, referencia" class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
+            <input type="text" id="checkout-name" required placeholder="Tu nombre" class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono *</label>
+            <input type="tel" id="checkout-phone" required placeholder="Ej: 099 123 456" class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones (opcional)</label>
+            <textarea id="checkout-notes" rows="2" placeholder="Indicaciones para tu pedido" class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"></textarea>
+          </div>
+          <div id="checkout-payment-wrap">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Medio de pago <span id="checkout-payment-required">*</span></label>
+            <div class="space-y-2">
+              <div>
+                <label class="flex items-center gap-2 p-2 border border-gray-300 cursor-pointer hover:bg-gray-50 checkout-payment-option">
+                  <input type="radio" name="payment" value="efectivo" class="text-red-600">
+                  <span>Efectivo</span>
+                </label>
+                <div id="checkout-cash-wrap" class="hidden mt-2 pl-2 border-l-2 border-gray-200 ml-1">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">¿Con cuánto vas a pagar?</label>
+                  <input type="number" id="checkout-cash" min="0" step="1" placeholder="Monto en efectivo" class="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                  <p id="checkout-change" class="mt-1 text-sm text-gray-600 hidden"></p>
+                  <p id="checkout-cash-warning" class="mt-1 text-sm text-red-600 hidden"></p>
+                </div>
+              </div>
+              <label class="flex items-center gap-2 p-2 border border-gray-300 cursor-pointer hover:bg-gray-50 checkout-payment-option">
+                <input type="radio" name="payment" value="pos" class="text-red-600">
+                <span>Tarjeta débito o crédito</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 border border-gray-300 cursor-pointer hover:bg-gray-50 checkout-payment-option">
+                <input type="radio" name="payment" value="mercadopago" class="text-red-600">
+                <span>Mercado Pago</span>
+              </label>
+            </div>
+          </div>
+          <div class="border-t border-gray-200 pt-4 space-y-1">
+            <p class="flex justify-between"><span>Subtotal</span><span id="checkout-subtotal">$ 0</span></p>
+            <p class="flex justify-between hidden" id="checkout-shipping-row"><span>Envío</span><span id="checkout-shipping">$ 0</span></p>
+            <p class="flex justify-between font-semibold text-lg"><span>Total</span><span id="checkout-total">$ 0</span></p>
+          </div>
+          <button type="submit" id="checkout-confirm-btn" class="w-full py-3 bg-green-600 text-white font-medium hover:bg-green-700 border border-green-700">
+            Confirmar pedido
+          </button>
+        </form>
+      </div>
+
+      <!-- Success -->
+      <div id="view-success" class="view hidden text-center py-8 px-4">
+        <div class="text-6xl mb-4">✓</div>
+        <h2 class="text-xl font-semibold text-green-700 mb-2">Pedido enviado</h2>
+        <p class="text-gray-600 mb-2">Te contactaremos para confirmarlo.</p>
+        <p class="text-sm text-gray-500 mb-6"><span id="success-time">Tiempo estimado:</span></p>
+        <a href="#" id="success-new" class="inline-block py-2.5 px-6 bg-red-600 text-white hover:bg-red-700 border border-red-700">Hacer otro pedido</a>
+      </div>
+    </main>
+  </div>
+
+  <div id="loading-overlay" class="loading-overlay fixed inset-0 z-50 hidden flex items-center justify-center">
+    <div class="loading-content flex flex-col items-center gap-4">
+      <div class="loading-dots flex items-center gap-1.5" aria-hidden="true">
+        <span class="loading-dot w-2 h-2 bg-red-500"></span>
+        <span class="loading-dot w-2 h-2 bg-red-500 loading-dot--2"></span>
+        <span class="loading-dot w-2 h-2 bg-red-500 loading-dot--3"></span>
+      </div>
+      <span class="loading-text text-sm font-light text-white/90 tracking-wide">Cargando...</span>
+    </div>
+  </div>
+
+  <!-- Alerta del sistema (no nativa) -->
+  <div id="app-alert" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center p-4">
+    <div class="bg-white max-w-md w-full border border-gray-200 shadow-lg">
+      <div class="p-4 sm:p-6">
+        <h3 id="app-alert-title" class="text-lg sm:text-xl font-light mb-3 sm:mb-4 text-gray-900"></h3>
+        <p id="app-alert-message" class="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6"></p>
+        <div class="flex justify-end">
+          <button type="button" id="app-alert-ok" class="px-4 sm:px-6 py-2 bg-red-600 text-white border border-red-600 hover:bg-red-700 transition-colors uppercase tracking-wider text-xs sm:text-sm font-light">
+            Aceptar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NRD Data Access: local en desarrollo; en producción CDN con commit fijado para incluir catalogConfig (actualizar commit al subir nrd-data-access) -->
+  <script>
+    var _nrdSrc = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '0.0.0.0')
+      ? '/nrd-data-access/dist/nrd-data-access.js'
+      : 'https://cdn.jsdelivr.net/gh/yosbany/nrd-data-access@7a298f6/dist/nrd-data-access.js';
+    document.write('<script src="' + _nrdSrc + '"><\/script>');
+  </script>
+  <script>
+    window.nrd = typeof NRDDataAccess !== 'undefined' ? new NRDDataAccess() : null;
+    if (!window.nrd) console.error('NRDDataAccess no cargó. Verifica la ruta a nrd-data-access.');
+  </script>
+  <script src="modules/storage.js"></script>
+  <script src="modules/cart.js"></script>
+  <script src="modules/address-validation.js"></script>
+  <script src="modules/catalog-config.js"></script>
+  <script src="views/home/home.js"></script>
+  <script src="views/catalog/catalog.js"></script>
+  <script src="views/product-detail/product-detail.js"></script>
+  <script src="views/cart/cart.js"></script>
+  <script src="views/checkout/checkout.js"></script>
+  <script src="views/success/success.js"></script>
+  <script src="app.js"></script>
+  <script>
+    (function () {
+      var base = document.querySelector('base');
+      var basePath = base ? base.getAttribute('href') : '/nrd-catalogo/';
+      if (!basePath.endsWith('/')) basePath += '/';
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register(basePath + 'service-worker.js').catch(function (err) {
+          console.warn('Service worker no registrado:', err);
+        });
+      }
+
+      var deferredPrompt = null;
+      var banner = document.getElementById('pwa-install-banner');
+      var installBtn = document.getElementById('pwa-install-btn');
+      var dismissBtn = document.getElementById('pwa-install-dismiss');
+
+      function showBanner() {
+        if (!banner || !deferredPrompt) return;
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) return;
+        banner.classList.remove('hidden');
+      }
+
+      function hideBanner() {
+        if (banner) banner.classList.add('hidden');
+        deferredPrompt = null;
+      }
+
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        showBanner();
+      });
+
+      if (installBtn) {
+        installBtn.addEventListener('click', function () {
+          if (!deferredPrompt) { hideBanner(); return; }
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then(function (choice) {
+            hideBanner();
+          }).catch(hideBanner);
+        });
+      }
+      if (dismissBtn) dismissBtn.addEventListener('click', hideBanner);
+
+      window.addEventListener('appinstalled', hideBanner);
+    })();
+  </script>
+</body>
+</html>

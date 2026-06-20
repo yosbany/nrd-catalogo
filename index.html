@@ -40,6 +40,18 @@
       }
     }
   </script>
+  <script>
+    (function() {
+      if (console.warn) {
+        var originalWarn = console.warn;
+        console.warn = function() {
+          var msg = arguments[0];
+          if (typeof msg === 'string' && msg.indexOf('cdn.tailwindcss.com') !== -1) return;
+          return originalWarn.apply(console, arguments);
+        };
+      }
+    })();
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="assets/styles/styles.css">
   <meta name="theme-color" content="#dc2626">
@@ -49,6 +61,7 @@
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
 </head>
 <body class="bg-gray-100 text-gray-900 font-sans antialiased min-h-screen">
+  <div id="loading-spinner" class="hidden" aria-hidden="true"></div>
   <div id="app" class="min-h-screen flex flex-col max-w-4xl mx-auto">
     <!-- Header -->
     <header class="bg-red-50 border-b border-red-100 pl-2 pr-3 py-1 sticky top-0 z-20">
@@ -272,23 +285,45 @@
     </div>
   </div>
 
-  <!-- NRD Common (spinner unificado) -->
+  <!-- NRD libraries: Data Access → Common (secuencial, sin document.write) -->
   <script>
-    var _nrdCommonSrc = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '0.0.0.0')
-      ? '/nrd-common/dist/nrd-common.js'
-      : 'https://cdn.jsdelivr.net/gh/yosbany/nrd-common@main/dist/nrd-common.js';
-    document.write('<script src="' + _nrdCommonSrc + '"><\/script>');
-  </script>
-  <!-- NRD Data Access: local en desarrollo; producción desde datos.nrdonline.site -->
-  <script>
-    var _nrdSrc = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '0.0.0.0')
-      ? '/nrd-data-access/dist/nrd-data-access.js'
-      : 'https://cdn.jsdelivr.net/gh/yosbany/nrd-data-access@main/dist/nrd-data-access.js';
-    document.write('<script src="' + _nrdSrc + '"><\/script>');
-  </script>
-  <script>
-    window.nrd = typeof NRDDataAccess !== 'undefined' ? new NRDDataAccess() : null;
-    if (!window.nrd) console.error('NRDDataAccess no cargó. Verifica la ruta a nrd-data-access.');
+    (function() {
+      var isLocal = window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname === '0.0.0.0';
+
+      var dataAccessUrl = isLocal
+        ? '/nrd-data-access/dist/nrd-data-access.js'
+        : 'https://cdn.jsdelivr.net/gh/yosbany/nrd-data-access@main/dist/nrd-data-access.js';
+
+      var commonUrl = isLocal
+        ? '/nrd-common/dist/nrd-common.js'
+        : 'https://cdn.jsdelivr.net/gh/yosbany/nrd-common@main/dist/nrd-common.js';
+
+      function loadScript(src) {
+        return new Promise(function(resolve, reject) {
+          var script = document.createElement('script');
+          script.src = src;
+          script.onload = resolve;
+          script.onerror = function() { reject(new Error('No se pudo cargar: ' + src)); };
+          document.head.appendChild(script);
+        });
+      }
+
+      loadScript(dataAccessUrl)
+        .then(function() {
+          window.nrd = typeof NRDDataAccess !== 'undefined' ? new NRDDataAccess() : null;
+          if (!window.nrd) console.error('NRDDataAccess no cargó.');
+          return loadScript(commonUrl);
+        })
+        .then(function() {
+          window.dispatchEvent(new Event('nrd-catalogo-ready'));
+        })
+        .catch(function(err) {
+          console.error(err);
+          window.dispatchEvent(new Event('nrd-catalogo-ready'));
+        });
+    })();
   </script>
   <script src="modules/storage.js"></script>
   <script src="modules/cart.js"></script>

@@ -155,8 +155,36 @@
     if (el) el.classList.add('hidden');
   }
 
+  function showSpinnerSafe(message) {
+    try {
+      if (typeof window.showSpinner === 'function') {
+        window.showSpinner(message);
+        return;
+      }
+      if (window.NRDCommon && typeof window.NRDCommon.ensureSpinner === 'function') {
+        window.NRDCommon.ensureSpinner();
+        if (typeof window.NRDCommon.showSpinner === 'function') {
+          window.NRDCommon.showSpinner(message);
+        }
+      }
+    } catch (e) {
+      console.warn('Spinner no disponible', e);
+    }
+  }
+
+  function hideSpinnerSafe() {
+    try {
+      if (typeof window.hideSpinner === 'function') window.hideSpinner();
+      else if (window.NRDCommon && typeof window.NRDCommon.hideSpinner === 'function') {
+        window.NRDCommon.hideSpinner();
+      }
+    } catch (e) {
+      console.warn('hideSpinner no disponible', e);
+    }
+  }
+
   async function init() {
-    showSpinner('Cargando catálogo...');
+    showSpinnerSafe('Cargando catálogo...');
     try {
       const nrd = window.nrd;
       if (!nrd) {
@@ -170,8 +198,12 @@
       }
       // Autenticación anónima para acceder a Firebase (productos, companyInfo, catalog)
       if (nrd.auth && typeof nrd.auth.signInAnonymously === 'function') {
-        if (!nrd.auth.getCurrentUser()) await nrd.auth.signInAnonymously();
-        await new Promise(function (r) { setTimeout(r, 500); });
+        try {
+          if (!nrd.auth.getCurrentUser()) await nrd.auth.signInAnonymously();
+          await new Promise(function (r) { setTimeout(r, 500); });
+        } catch (authErr) {
+          console.warn('Auth anónima no disponible (revisar Firebase Console → Sign-in anónimo)', authErr);
+        }
       }
       if (nrd.companyInfo) {
         try {
@@ -224,13 +256,22 @@
       updateCartCount();
       updateActiveOrderIndicator();
     } finally {
-      hideSpinner();
+      hideSpinnerSafe();
     }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
+  var catalogoAppStarted = false;
+
+  function startCatalogApp() {
+    if (catalogoAppStarted) return;
+    catalogoAppStarted = true;
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
   }
+
+  window.addEventListener('nrd-catalogo-ready', startCatalogApp);
+  setTimeout(startCatalogApp, 12000);
 })();

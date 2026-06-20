@@ -321,29 +321,9 @@
       });
 
       try {
-        const normalizePhone = (p) => (p || '').replace(/\s+/g, '').replace(/[^\d+]/g, '').trim();
-        const phoneNorm = normalizePhone(phone);
-        let clientId = 'catalogo';
-        if (nrd.clients && phoneNorm) {
-          let existing = null;
-          try {
-            const byPhone = typeof nrd.clients.queryByChild === 'function' ? await nrd.clients.queryByChild('phone', phone) : [];
-            const list = Array.isArray(byPhone) ? byPhone : (byPhone ? Object.values(byPhone) : []);
-            existing = list.find((c) => normalizePhone(c.phone) === phoneNorm);
-          } catch (_) {
-            const all = await nrd.clients.getAll();
-            const list = Array.isArray(all) ? all : Object.values(all || {});
-            existing = list.find((c) => normalizePhone(c.phone) === phoneNorm);
-          }
-          if (existing && existing.id) {
-            clientId = existing.id;
-          } else {
-            const clientData = { name, phone };
-            if (address != null && String(address).trim() !== '') clientData.address = String(address).trim();
-            const newId = await nrd.clients.create(clientData);
-            if (newId) clientId = newId;
-          }
-        }
+        const clientId = typeof window.resolveCatalogClientId === 'function'
+          ? await window.resolveCatalogClientId(nrd, name, phone, address)
+          : 'catalogo';
 
         const cfg = typeof window.getCatalogConfig === 'function' ? window.getCatalogConfig() : {};
         const now = Date.now();
@@ -377,6 +357,10 @@
           deliveryDate,
           deliveryType: type
         };
+        const authUser = nrd.auth && nrd.auth.getCurrentUser ? nrd.auth.getCurrentUser() : null;
+        if (authUser && authUser.uid) {
+          orderData.catalogUid = authUser.uid;
+        }
         const orderId = await nrd.orders.create(orderData);
         if (typeof window.addLastOrderToStorage === 'function') {
           window.addLastOrderToStorage({ name, phone, address, items: window.cart.items, total: Math.round(total) });

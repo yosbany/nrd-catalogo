@@ -257,17 +257,6 @@
     </main>
   </div>
 
-  <div id="loading-overlay" class="loading-overlay fixed inset-0 z-50 hidden flex items-center justify-center">
-    <div class="loading-content flex flex-col items-center gap-4">
-      <div class="loading-dots flex items-center gap-1.5" aria-hidden="true">
-        <span class="loading-dot w-2 h-2 bg-red-500"></span>
-        <span class="loading-dot w-2 h-2 bg-red-500 loading-dot--2"></span>
-        <span class="loading-dot w-2 h-2 bg-red-500 loading-dot--3"></span>
-      </div>
-      <span class="loading-text text-sm font-light text-white/90 tracking-wide">Cargando...</span>
-    </div>
-  </div>
-
   <!-- Alerta del sistema (no nativa) -->
   <div id="app-alert" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center p-4">
     <div class="bg-white max-w-md w-full border border-gray-200 shadow-lg">
@@ -283,6 +272,13 @@
     </div>
   </div>
 
+  <!-- NRD Common (spinner unificado) -->
+  <script>
+    var _nrdCommonSrc = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '0.0.0.0')
+      ? '/nrd-common/dist/nrd-common.js'
+      : 'https://cdn.jsdelivr.net/gh/yosbany/nrd-common@main/dist/nrd-common.js';
+    document.write('<script src="' + _nrdCommonSrc + '"><\/script>');
+  </script>
   <!-- NRD Data Access: local en desarrollo; producción desde datos.nrdonline.site -->
   <script>
     var _nrdSrc = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '0.0.0.0')

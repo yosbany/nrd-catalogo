@@ -156,14 +156,12 @@
   }
 
   async function init() {
-    const overlay = document.getElementById('loading-overlay');
-    if (overlay) overlay.classList.remove('hidden');
+    showSpinner('Cargando catálogo...');
     try {
       const nrd = window.nrd;
       if (!nrd) {
         console.error('NRD Data Access no disponible. Comprueba que nrd-data-access.js cargue (local: /nrd-data-access/dist/ o CDN).');
         showCatalogError('No se pudo cargar la librería de datos. Recarga la página.');
-        if (overlay) overlay.classList.add('hidden');
         return;
       }
       if (!nrd.catalogConfig) {
@@ -226,7 +224,7 @@
       updateCartCount();
       updateActiveOrderIndicator();
     } finally {
-      if (overlay) overlay.classList.add('hidden');
+      hideSpinner();
     }
   }
 

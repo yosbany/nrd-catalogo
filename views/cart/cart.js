@@ -342,21 +342,32 @@
       }
     }
 
+    const storeOpen = typeof window.isStoreOpen === 'function' ? window.isStoreOpen() : true;
+    const storeClosedBanner = document.getElementById('cart-store-closed-banner');
+    if (storeClosedBanner) {
+      storeClosedBanner.classList.toggle('hidden', storeOpen);
+    }
+
     const checkoutBtn = document.getElementById('cart-checkout');
     const continueBtn = document.getElementById('cart-continue');
     const hasItems = items.length > 0;
+    const checkoutIcon = '<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
     if (checkoutBtn) {
       if (!hasItems) {
         checkoutBtn.classList.add('hidden');
       } else {
         checkoutBtn.classList.remove('hidden');
         const meetsMinimum = minimum <= 0 || subtotal >= minimum;
-        const storeOpen = typeof window.isStoreOpen === 'function' ? window.isStoreOpen() : true;
         const noActiveOrder = !activeOrderId;
         const canCheckout = meetsMinimum && storeOpen && noActiveOrder;
         checkoutBtn.disabled = !canCheckout;
         checkoutBtn.classList.toggle('opacity-50', !canCheckout);
         checkoutBtn.classList.toggle('cursor-not-allowed', !canCheckout);
+        let btnText = 'Finalizar pedido';
+        if (!storeOpen) btnText = 'Local cerrado';
+        else if (!noActiveOrder) btnText = 'Pedido en curso';
+        else if (!meetsMinimum) btnText = 'Mínimo no alcanzado';
+        checkoutBtn.innerHTML = checkoutIcon + ' ' + btnText;
       }
     }
     if (continueBtn) {

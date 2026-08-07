@@ -146,6 +146,37 @@
     }
   }
 
+  function applyPaymentMethodsVisibility() {
+    const enabled = typeof window.getEnabledPaymentMethods === 'function'
+      ? window.getEnabledPaymentMethods()
+      : { efectivo: true, pos: true, mercadopago: true };
+    let firstEnabled = null;
+    document.querySelectorAll('.checkout-payment-method').forEach((el) => {
+      const key = el.getAttribute('data-payment');
+      const on = !!(key && enabled[key]);
+      el.classList.toggle('hidden', !on);
+      const radio = el.querySelector('input[name="payment"]');
+      if (radio) {
+        if (!on) {
+          radio.checked = false;
+          radio.disabled = true;
+        } else {
+          radio.disabled = false;
+          if (!firstEnabled) firstEnabled = radio;
+        }
+      }
+    });
+    const checked = document.querySelector('input[name="payment"]:checked');
+    if ((!checked || checked.disabled) && firstEnabled) {
+      firstEnabled.checked = true;
+    }
+    const noneMsg = document.getElementById('checkout-payment-none-msg');
+    const options = document.getElementById('checkout-payment-options');
+    const anyEnabled = !!(enabled.efectivo || enabled.pos || enabled.mercadopago);
+    if (noneMsg) noneMsg.classList.toggle('hidden', anyEnabled);
+    if (options) options.classList.toggle('hidden', !anyEnabled);
+  }
+
   function preloadFromLastOrder() {
     const preload = typeof window.getAndClearPendingCheckoutPreload === 'function' ? window.getAndClearPendingCheckoutPreload() : null;
     if (preload) {
@@ -181,6 +212,7 @@
     const payRequired = document.getElementById('checkout-payment-required');
     if (payWrap) payWrap.classList.toggle('hidden', !isEnvio);
     if (payRequired) payRequired.textContent = isEnvio ? '*' : '(opcional)';
+    applyPaymentMethodsVisibility();
     document.querySelectorAll('.checkout-type-option').forEach((el) => {
       el.classList.toggle('has-border', (el.dataset.type || '') === getDeliveryType());
     });
@@ -200,6 +232,7 @@
         const payRequired = document.getElementById('checkout-payment-required');
         if (payWrap) payWrap.classList.toggle('hidden', !isEnvio);
         if (payRequired) payRequired.textContent = isEnvio ? '*' : '(opcional)';
+        applyPaymentMethodsVisibility();
         document.querySelectorAll('.checkout-type-option').forEach((opt) => {
           opt.classList.toggle('has-border', (opt.dataset.type || '') === r.value);
         });

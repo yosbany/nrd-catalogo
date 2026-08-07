@@ -228,8 +228,8 @@
           </div>
           <div id="checkout-payment-wrap">
             <label class="block text-sm font-medium text-gray-700 mb-1">Medio de pago <span id="checkout-payment-required">*</span></label>
-            <div class="space-y-2">
-              <div>
+            <div class="space-y-2" id="checkout-payment-options">
+              <div class="checkout-payment-method" data-payment="efectivo">
                 <label class="flex items-center gap-2 p-2 border border-gray-300 cursor-pointer hover:bg-gray-50 checkout-payment-option">
                   <input type="radio" name="payment" value="efectivo" class="text-red-600">
                   <span>Efectivo</span>
@@ -241,15 +241,16 @@
                   <p id="checkout-cash-warning" class="mt-1 text-sm text-red-600 hidden"></p>
                 </div>
               </div>
-              <label class="flex items-center gap-2 p-2 border border-gray-300 cursor-pointer hover:bg-gray-50 checkout-payment-option">
+              <label class="checkout-payment-method flex items-center gap-2 p-2 border border-gray-300 cursor-pointer hover:bg-gray-50 checkout-payment-option" data-payment="pos">
                 <input type="radio" name="payment" value="pos" class="text-red-600">
                 <span>Tarjeta débito o crédito</span>
               </label>
-              <label class="flex items-center gap-2 p-2 border border-gray-300 cursor-pointer hover:bg-gray-50 checkout-payment-option">
+              <label class="checkout-payment-method flex items-center gap-2 p-2 border border-gray-300 cursor-pointer hover:bg-gray-50 checkout-payment-option" data-payment="mercadopago">
                 <input type="radio" name="payment" value="mercadopago" class="text-red-600">
                 <span>Mercado Pago</span>
               </label>
             </div>
+            <p id="checkout-payment-none-msg" class="hidden mt-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 p-2">No hay medios de pago disponibles en este momento. Contactá al local.</p>
           </div>
           <div class="border-t border-gray-200 pt-4 space-y-1">
             <p class="flex justify-between"><span>Subtotal</span><span id="checkout-subtotal">$ 0</span></p>

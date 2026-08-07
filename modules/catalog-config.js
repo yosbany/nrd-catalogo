@@ -13,7 +13,8 @@ const DEFAULT_CONFIG = {
   tagline: 'Horneamos con sabor cubano',
   storeOpenTime: '08:00',
   storeCloseTime: '20:00',
-  storeManualOverride: null
+  storeManualOverride: null,
+  paymentMethods: { efectivo: true, pos: true, mercadopago: true }
 };
 
 let catalogState = { ...DEFAULT_CONFIG };
@@ -51,6 +52,15 @@ function setCatalogConfig(remote) {
     catalogState.storeManualOverride = (v === 'open' || v === 'closed') ? v : null;
   } else {
     catalogState.storeManualOverride = null;
+  }
+  if (remote.paymentMethods && typeof remote.paymentMethods === 'object') {
+    catalogState.paymentMethods = {
+      efectivo: remote.paymentMethods.efectivo !== false,
+      pos: remote.paymentMethods.pos !== false,
+      mercadopago: remote.paymentMethods.mercadopago !== false
+    };
+  } else {
+    catalogState.paymentMethods = { ...DEFAULT_CONFIG.paymentMethods };
   }
 }
 
@@ -354,3 +364,16 @@ window.getDefaultProductImageUrl = getDefaultProductImageUrl;
 window.assetUrl = assetUrl;
 window.setCatalogConfigFromCompany = setCatalogConfigFromCompany;
 window.isStoreOpen = isStoreOpen;
+
+function getEnabledPaymentMethods() {
+  const pm = (catalogState.paymentMethods && typeof catalogState.paymentMethods === 'object')
+    ? catalogState.paymentMethods
+    : DEFAULT_CONFIG.paymentMethods;
+  return {
+    efectivo: pm.efectivo !== false,
+    pos: pm.pos !== false,
+    mercadopago: pm.mercadopago !== false
+  };
+}
+
+window.getEnabledPaymentMethods = getEnabledPaymentMethods;

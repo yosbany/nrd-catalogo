@@ -2,14 +2,26 @@
 
 App de catálogo y pedidos para clientes (ej. Panadería Nueva Río D'or). Sin registro ni login: el cliente navega el catálogo, arma el pedido y lo envía.
 
-## Firebase
+## Backend
 
-La app usa **autenticación anónima** para acceder a Firebase (productos, información de la empresa, órdenes). No hay pantalla de login.
+El PWA (`https://catalogo.nrdonline.site`) **solo** habla con la API:
 
-- En **Firebase Console** → **Authentication** → **Sign-in method** hay que **activar "Anonymous"**.
-- La librería NRD Data Access debe incluir `signInAnonymously()` (versión que lo soporte).
+- Base: `https://api.nrdonline.site`
+- Auth: header `X-Catalog-Key`
+- Firebase queda en el server (cuenta `auto@nrd.uy`); no hay Auth anónima ni SDK de Firebase en el cliente.
+
+### Endpoints usados
+
+| Método | Ruta | Uso |
+|--------|------|-----|
+| `GET` | `/catalog` | Vitrina (productos, categorías, envío, horarios) |
+| `POST` | `/orders` | Crear pedido (precios/total los calcula el server) |
+| `GET` | `/orders/{orderId}` | Estado del pedido activo (poll ~15–20s) |
+
+Cliente: `modules/catalog-api.js`.
 
 ## Uso
 
-- Productos: se obtienen de la API de productos; solo se muestran los que tienen la etiqueta **CATALOGO**.
-- Imágenes: campo `imagePath` del producto (ruta relativa a la app, ej. `assets/images/pan.jpg`).
+- Productos: vienen de `GET /catalog` (`products` + `optionsCatalog`).
+- Pedidos: `POST /orders` con `items[].sku` (sin `price`/`total` del cliente).
+- Pedido activo: snapshot en `localStorage` + estado vía `GET /orders/{id}`.

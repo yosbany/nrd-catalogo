@@ -1,12 +1,14 @@
 /**
  * nrd-catalogo - App de catálogo y pedidos (cliente)
- * Navegación entre vistas sin registro ni login.
+ * Habla solo con https://api.nrdonline.site (sin Firebase en el browser).
  */
 (function () {
   const views = ['home', 'catalog', 'product', 'cart', 'checkout', 'success'];
   let currentView = 'home';
   let products = [];
   let companyInfo = null;
+  let activeOrderPollTimer = null;
+  const ACTIVE_ORDER_POLL_MS = 20000;
 
   function showView(name) {
     views.forEach((id) => {
@@ -25,52 +27,83 @@
     el.classList.toggle('hidden', n === 0);
   }
 
-  let activeOrderIndicatorUnsubscribe = null;
-  function updateActiveOrderIndicator() {
+  function setActiveOrderStyle(isActive) {
     const navCart = document.getElementById('nav-cart');
     if (!navCart) return;
-    if (activeOrderIndicatorUnsubscribe) {
-      activeOrderIndicatorUnsubscribe();
-      activeOrderIndicatorUnsubscribe = null;
+    if (isActive) {
+      navCart.classList.remove('text-red-600', 'hover:text-red-700');
+      navCart.classList.add('text-amber-600', 'hover:text-amber-700', 'nav-cart--active-order');
+      navCart.title = 'Pedido en curso';
+    } else {
+      navCart.classList.remove('text-amber-600', 'hover:text-amber-700', 'nav-cart--active-order');
+      navCart.classList.add('text-red-600', 'hover:text-red-700');
+      navCart.title = 'Mi pedido';
     }
-    const activeOrderId = typeof window.getActiveOrderIdFromStorage === 'function' ? window.getActiveOrderIdFromStorage() : null;
-    const nrd = window.nrd;
+  }
 
-    function setActiveOrderStyle(isActive) {
-      if (isActive) {
-        navCart.classList.remove('text-red-600', 'hover:text-red-700');
-        navCart.classList.add('text-amber-600', 'hover:text-amber-700', 'nav-cart--active-order');
-        navCart.title = 'Pedido en curso';
-      } else {
-        navCart.classList.remove('text-amber-600', 'hover:text-amber-700', 'nav-cart--active-order');
-        navCart.classList.add('text-red-600', 'hover:text-red-700');
-        navCart.title = 'Mi pedido';
-      }
+  function stopActiveOrderPoll() {
+    if (activeOrderPollTimer) {
+      clearInterval(activeOrderPollTimer);
+      activeOrderPollTimer = null;
     }
+  }
 
+  async function refreshActiveOrderStatus() {
+    const activeOrderId = typeof window.getActiveOrderIdFromStorage === 'function'
+      ? window.getActiveOrderIdFromStorage()
+      : null;
     if (!activeOrderId) {
       setActiveOrderStyle(false);
-      return;
+      stopActiveOrderPoll();
+      return null;
     }
-    if (!nrd || !nrd.orders) {
+    if (!window.CatalogAPI || typeof window.CatalogAPI.fetchOrder !== 'function') {
       setActiveOrderStyle(true);
-      return;
+      return null;
     }
-    activeOrderIndicatorUnsubscribe = nrd.orders.onValueById(activeOrderId, function (order) {
+    try {
+      const order = await window.CatalogAPI.fetchOrder(activeOrderId);
       if (!order) {
         if (typeof window.clearActiveOrderIdFromStorage === 'function') window.clearActiveOrderIdFromStorage();
         setActiveOrderStyle(false);
-        return;
+        stopActiveOrderPoll();
+        return null;
       }
       const status = (order.status || 'Pendiente').toLowerCase();
       const isPending = status !== 'completado' && status !== 'cancelado';
       if (!isPending) {
         if (typeof window.clearActiveOrderIdFromStorage === 'function') window.clearActiveOrderIdFromStorage();
         setActiveOrderStyle(false);
-        return;
+        stopActiveOrderPoll();
+        return order;
       }
       setActiveOrderStyle(true);
-    });
+      return order;
+    } catch (e) {
+      if (e && e.status === 404) {
+        if (typeof window.clearActiveOrderIdFromStorage === 'function') window.clearActiveOrderIdFromStorage();
+        setActiveOrderStyle(false);
+        stopActiveOrderPoll();
+        return null;
+      }
+      console.warn('No se pudo consultar pedido activo:', e);
+      setActiveOrderStyle(true);
+      return null;
+    }
+  }
+
+  function updateActiveOrderIndicator() {
+    stopActiveOrderPoll();
+    const activeOrderId = typeof window.getActiveOrderIdFromStorage === 'function'
+      ? window.getActiveOrderIdFromStorage()
+      : null;
+    if (!activeOrderId) {
+      setActiveOrderStyle(false);
+      return;
+    }
+    setActiveOrderStyle(true);
+    refreshActiveOrderStatus();
+    activeOrderPollTimer = setInterval(refreshActiveOrderStatus, ACTIVE_ORDER_POLL_MS);
   }
 
   document.getElementById('nav-home').addEventListener('click', (e) => { e.preventDefault(); showView('home'); });
@@ -131,6 +164,7 @@
   window.setCompanyInfo = (c) => { companyInfo = c; };
   window.updateCartCount = updateCartCount;
   window.updateActiveOrderIndicator = updateActiveOrderIndicator;
+  window.refreshActiveOrderStatus = refreshActiveOrderStatus;
   window.showAlert = showAlert;
 
   if (window.cart) window.cart.onChange(updateCartCount);
@@ -156,95 +190,53 @@
   }
 
   function showSpinnerSafe(message) {
-    try {
-      if (typeof window.showSpinner === 'function') {
-        window.showSpinner(message);
-        return;
-      }
-      if (window.NRDCommon && typeof window.NRDCommon.ensureSpinner === 'function') {
-        window.NRDCommon.ensureSpinner();
-        if (typeof window.NRDCommon.showSpinner === 'function') {
-          window.NRDCommon.showSpinner(message);
-        }
-      }
-    } catch (e) {
-      console.warn('Spinner no disponible', e);
-    }
+    var el = document.getElementById('loading-spinner');
+    if (!el) return;
+    el.classList.remove('hidden');
+    el.setAttribute('aria-hidden', 'false');
+    el.textContent = message || 'Cargando...';
+    el.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/40 text-white text-sm font-medium';
   }
 
   function hideSpinnerSafe() {
-    try {
-      if (typeof window.hideSpinner === 'function') window.hideSpinner();
-      else if (window.NRDCommon && typeof window.NRDCommon.hideSpinner === 'function') {
-        window.NRDCommon.hideSpinner();
-      }
-    } catch (e) {
-      console.warn('hideSpinner no disponible', e);
-    }
+    var el = document.getElementById('loading-spinner');
+    if (!el) return;
+    el.classList.add('hidden');
+    el.setAttribute('aria-hidden', 'true');
+    el.textContent = '';
+    el.className = 'hidden';
   }
 
   async function init() {
     showSpinnerSafe('Cargando catálogo...');
     try {
-      const nrd = window.nrd;
-      if (!nrd) {
-        console.error('NRD Data Access no disponible. Comprueba que nrd-data-access.js cargue (local: /nrd-data-access/dist/ o CDN).');
-        showCatalogError('No se pudo cargar la librería de datos. Recarga la página.');
+      if (!window.CatalogAPI || typeof window.CatalogAPI.fetchCatalog !== 'function') {
+        console.error('CatalogAPI no disponible');
+        showCatalogError('No se pudo cargar el cliente de la API. Recarga la página.');
         return;
       }
-      if (!nrd.catalogConfig) {
-        console.error('nrd.catalogConfig no existe. Usa una versión de nrd-data-access que incluya CatalogConfigService (build reciente).');
-        showCatalogError('Versión de la librería sin soporte de catálogo. Actualiza nrd-data-access.');
-      }
-      // Autenticación anónima para acceder a Firebase (productos, companyInfo, catalog)
-      if (nrd.auth && typeof nrd.auth.signInAnonymously === 'function') {
-        try {
-          if (!nrd.auth.getCurrentUser()) await nrd.auth.signInAnonymously();
-          await new Promise(function (r) { setTimeout(r, 500); });
-        } catch (authErr) {
-          console.warn('Auth anónima no disponible (revisar Firebase Console → Sign-in anónimo)', authErr);
-        }
-      }
-      if (nrd.companyInfo) {
-        try {
-          const info = await nrd.companyInfo.get();
-          window.setCompanyInfo(info);
-          if (typeof window.setCatalogConfigFromCompany === 'function') window.setCatalogConfigFromCompany(info);
-        } catch (e) { console.warn('CompanyInfo no cargado', e); }
-      }
-      if (nrd.catalogConfig) {
-        if (typeof nrd.catalogConfig.onValue === 'function') {
-          nrd.catalogConfig.onValue(function (config) {
-            if (typeof window.setCatalogConfig === 'function') window.setCatalogConfig(config || {});
-            clearCatalogError();
-            updateHeader();
-            if (typeof window.renderView === 'function' && currentView) window.renderView(currentView);
-          });
-        }
-        try {
-          const remote = await nrd.catalogConfig.get();
-          if (remote && typeof remote === 'object' && typeof window.setCatalogConfig === 'function') {
-            window.setCatalogConfig(remote);
-            clearCatalogError();
-          } else if (remote == null && typeof window.setCatalogConfig === 'function') {
-            window.setCatalogConfig({});
+      try {
+        const remote = await window.CatalogAPI.fetchCatalog();
+        if (remote && typeof remote === 'object') {
+          if (typeof window.setCatalogConfig === 'function') window.setCatalogConfig(remote);
+          const built = typeof window.buildProductsFromCatalogConfig === 'function'
+            ? window.buildProductsFromCatalogConfig()
+            : [];
+          window.setProducts(built);
+          if (remote.brandName) {
+            window.setCompanyInfo({ tradeName: remote.brandName });
           }
-        } catch (e) {
-          console.error('Error al cargar catálogo desde Firebase:', e);
-          console.error('Revisa: 1) Reglas de Realtime Database (lectura en /catalog para auth != null). 2) Sign-in anónimo activado en Firebase Console.');
-          showCatalogError('No se pudo cargar el catálogo. Revisa consola (F12) y reglas de Firebase.');
-        }
-      }
-      if (nrd.products) {
-        try {
-          const flatProducts = await nrd.products.getAll({ flat: true });
-          const list = Array.isArray(flatProducts) ? flatProducts : [];
-          const active = list.filter(function (p) { return p.active !== false; });
-          window.setProducts(active);
-        } catch (e) {
-          console.error('Error al cargar productos:', e);
+          clearCatalogError();
+        } else {
+          if (typeof window.setCatalogConfig === 'function') window.setCatalogConfig({});
           window.setProducts([]);
+          showCatalogError('El catálogo llegó vacío. Intentá más tarde.');
         }
+      } catch (e) {
+        console.error('Error al cargar catálogo desde API:', e);
+        const msg = (e && e.message) ? e.message : 'No se pudo cargar el catálogo';
+        showCatalogError(msg + '. Revisá la conexión e intentá recargar.');
+        window.setProducts([]);
       }
       updateHeader();
       if (typeof window.initHome === 'function') window.initHome();
@@ -273,5 +265,11 @@
   }
 
   window.addEventListener('nrd-catalogo-ready', startCatalogApp);
-  setTimeout(startCatalogApp, 12000);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(startCatalogApp, 0);
+    });
+  } else {
+    setTimeout(startCatalogApp, 0);
+  }
 })();

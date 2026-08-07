@@ -1,6 +1,6 @@
 /**
- * Configuración del catálogo: lee desde la API (nrd.catalogConfig).
- * Estado en memoria actualizado con get() y onValue(); ya no usa config constante.
+ * Configuración del catálogo: lee desde la API (GET /catalog).
+ * Estado en memoria; productos UI se construyen con buildProductsFromCatalogConfig().
  */
 const DEFAULT_CONFIG = {
   products: {},
@@ -23,8 +23,7 @@ function getCatalogConfig() {
 }
 
 /**
- * Establece la config del catálogo desde la API (Firebase).
- * Llamado desde app.js con nrd.catalogConfig.get() o onValue().
+ * Establece la config del catálogo desde GET /catalog.
  */
 function setCatalogConfig(remote) {
   if (!remote || typeof remote !== 'object') return;
@@ -208,47 +207,86 @@ function getVariantDisplayName(product, variant) {
   return (variant.name || '');
 }
 
-/** Agrupa variantes bajo el producto a mostrar. Solo retorna productos definidos en la config del catálogo y activos (active !== false). */
-function getDisplayProducts(products) {
-  const variantMap = getVariantToDisplayProduct();
+/**
+ * Construye la lista de productos para la UI solo desde /catalog (API).
+ * Ya no se usa /products de Firebase en el cliente.
+ */
+function buildProductsFromCatalogConfig() {
   const productsConfig = catalogState.products || {};
-  const catalogSkus = new Set(
-    Object.entries(productsConfig)
-      .filter(([, cfg]) => cfg && cfg.active !== false)
-      .map(([sku]) => sku)
-  );
-
-  const groups = {};
-  const standalones = [];
-
-  for (const p of products || []) {
-    const sku = (p.sku || (p.productId && p.variantId ? p.productId + '_' + p.variantId : null) || p.id || '').trim();
-    if (!sku) continue;
-    const parentSku = variantMap[sku];
-    if (parentSku) {
-      if (!groups[parentSku]) {
-        groups[parentSku] = {
-          product: { ...p, sku: parentSku, id: parentSku },
-          variants: []
-        };
-      }
-      groups[parentSku].variants.push(p);
-    } else if (catalogSkus.has(sku)) {
-      standalones.push(p);
-    }
-  }
+  const optCatalog = catalogState.optionsCatalog || {};
+  const categories = catalogState.categories || [];
+  const catById = {};
+  categories.forEach((c) => { if (c && c.id) catById[c.id] = c; });
 
   const result = [];
-  for (const g of Object.values(groups)) {
-    if (!catalogSkus.has(g.product.sku)) continue;
-    result.push({ ...g.product, variants: g.variants });
+  for (const [sku, cfg] of Object.entries(productsConfig)) {
+    if (!cfg || cfg.active === false) continue;
+    const s = String(sku).trim();
+    if (!s) continue;
+
+    const basePrice = cfg.price != null && !Number.isNaN(Number(cfg.price)) ? Number(cfg.price) : 0;
+    const optionsList = getProductOptionsList(cfg);
+    const variants = [];
+    const catalogPrices = cfg.catalogPrices || {};
+
+    for (const opt of optionsList) {
+      const option = optCatalog[opt.optionId];
+      if (!option || !Array.isArray(option.choices)) continue;
+      const variantSkus = opt.variantSkus || {};
+      const disabledIds = Array.isArray(opt.disabledChoiceIds) ? opt.disabledChoiceIds : [];
+      const optCatalogPrices = opt.catalogPrices || {};
+
+      for (const c of option.choices) {
+        const id = String(c.id || '').trim();
+        const name = String((c.commercialName && c.commercialName.trim()) ? c.commercialName.trim() : (c.name || '')).trim();
+        const choiceSku = String(variantSkus[id] || variantSkus[c.name] || c.sku || '').trim();
+        if (!choiceSku) continue;
+        if (disabledIds.includes(id) || disabledIds.includes(name) || disabledIds.includes(choiceSku)) continue;
+
+        let price = basePrice;
+        const cp = optCatalogPrices[id] ?? optCatalogPrices[c.name] ?? catalogPrices[id] ?? catalogPrices[choiceSku];
+        if (cp != null && !Number.isNaN(Number(cp))) {
+          price = Number(cp);
+        } else if (c.priceAdjustment != null && !Number.isNaN(Number(c.priceAdjustment))) {
+          price = basePrice + Number(c.priceAdjustment);
+        } else if (c.price != null && !Number.isNaN(Number(c.price))) {
+          price = Number(c.price);
+        }
+
+        variants.push({
+          id: id || choiceSku,
+          sku: choiceSku,
+          name: name || choiceSku,
+          price: Math.round(price),
+          active: true,
+          esVendible: true
+        });
+      }
+    }
+
+    const cat = catById[cfg.category];
+    const tags = [];
+    if (cat && cat.tag) tags.push(cat.tag);
+
+    result.push({
+      id: s,
+      sku: s,
+      name: (cfg.name || '').trim() || s,
+      price: Math.round(basePrice),
+      imagePath: (cfg.image || '').trim(),
+      description: (cfg.description || '').trim(),
+      category: cfg.category || null,
+      tags,
+      active: true,
+      variants
+    });
   }
-  const standaloneSkus = new Set(Object.keys(groups));
-  const filteredStandalones = standalones.filter((s) => {
-    const sSku = (s.sku || s.id || '').trim();
-    return !standaloneSkus.has(sSku);
-  });
-  return [...result, ...filteredStandalones];
+  return result;
+}
+
+/** Lista de productos a mostrar (desde API /catalog). El argumento se ignora (compat). */
+function getDisplayProducts(_products) {
+  return buildProductsFromCatalogConfig();
 }
 
 function getProductCategoryId(product) {
@@ -309,6 +347,7 @@ window.getProductDescription = getProductDescription;
 window.getProductDisplayName = getProductDisplayName;
 window.getProductOptionConfig = getProductOptionConfig;
 window.getVariantDisplayName = getVariantDisplayName;
+window.buildProductsFromCatalogConfig = buildProductsFromCatalogConfig;
 window.getDisplayProducts = getDisplayProducts;
 window.getDefaultProductImage = () => DEFAULT_PRODUCT_IMAGE;
 window.getDefaultProductImageUrl = getDefaultProductImageUrl;

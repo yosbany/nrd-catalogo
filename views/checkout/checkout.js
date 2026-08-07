@@ -249,7 +249,7 @@
       }
       const subtotal = window.cart.getSubtotal();
       const minimum = getMinimum();
-      if (subtotal < minimum) {
+      if (type === 'envio' && subtotal < minimum) {
         if (typeof window.showAlert === 'function') window.showAlert('Mínimo no alcanzado', 'El pedido no alcanza el mínimo de ' + formatCurrency(minimum) + '. Agregá más productos.');
         else alert('El pedido no alcanza el mínimo de ' + formatCurrency(minimum) + '. Agregá más productos.');
         return;
@@ -261,7 +261,6 @@
         return;
       }
       const address = addressRaw;
-      let addressWazeUrl = null;
       if (type === 'envio' && address && typeof window.validarDireccion === 'function') {
         const resultado = window.validarDireccion(address);
         if (resultado.status === 'INVALIDA') {
@@ -272,7 +271,6 @@
           }
           return;
         }
-        if (resultado.wazeUrl) addressWazeUrl = resultado.wazeUrl;
       }
       const payment = type === 'envio' ? document.querySelector('input[name="payment"]:checked') : null;
       if (type === 'envio' && !payment) {
@@ -283,108 +281,97 @@
       const notes = document.getElementById('checkout-notes').value.trim();
       const retiroTime = type === 'retiro' ? (document.getElementById('checkout-retiro-time') && document.getElementById('checkout-retiro-time').value) || '' : '';
       const cashNote = payment && payment.value === 'efectivo' ? document.getElementById('checkout-cash').value.trim() : '';
-      const nrd = window.nrd;
-      if (!nrd || !nrd.orders) {
+      if (!window.CatalogAPI || typeof window.CatalogAPI.createOrder !== 'function') {
         if (typeof window.showAlert === 'function') window.showAlert('Error', 'No se puede enviar el pedido. Intentá más tarde.');
         else alert('No se puede enviar el pedido. Intentá más tarde.');
         return;
       }
-      const shipping = getShippingCost();
-      const total = subtotal + shipping;
-      const wazeHref = type === 'envio' && address ? (addressWazeUrl || 'https://waze.com/ul?q=' + encodeURIComponent(address)) : '';
-      const envioLine = type === 'envio' && address
-        ? 'Envío: ' + '<a href="' + wazeHref + '" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline">' + escapeHtml(address) + '</a>'
-        : (type === 'envio' ? null : null);
-      const retiroLine = type !== 'envio' ? ('Retiro en local' + (retiroTime ? ' - Horario: ' + retiroTime : '')) : null;
-      const orderNotes = [
-        notes,
-        envioLine,
-        retiroLine,
-        type === 'envio' && payment ? ('Pago: ' + (payment.value === 'efectivo' ? 'Efectivo' + (cashNote ? ' (paga con $' + cashNote + ')' : '') : payment.value === 'pos' ? 'Tarjeta débito o crédito' : 'Mercado Pago')) : null,
-        phone ? 'Tel: ' + phone : null
-      ].filter(Boolean).join('\n');
 
-      // productId/variantId asociados al artículo u opción del catálogo para que en pedidos se vea qué se pidió
-      const getOrderProductId = typeof window.getOrderProductId === 'function' ? window.getOrderProductId : (pid, vid) => vid && /^P\d+(_\w+)?$/i.test(vid) ? vid : pid;
+      const getOrderProductId = typeof window.getOrderProductId === 'function'
+        ? window.getOrderProductId
+        : (pid, vid) => (vid && /^P\d+(_\w+)?$/i.test(vid) ? vid : pid);
       const items = window.cart.items.map((i) => {
-        const productId = getOrderProductId(i.productId, i.variantId) || i.productId;
-        const item = {
-          productId,
+        const sku = getOrderProductId(i.productId, i.variantId) || i.productId;
+        return {
+          sku: String(sku || '').trim(),
+          productName: i.productName || '',
+          quantity: i.quantity || 1
+        };
+      }).filter((i) => i.sku && i.quantity > 0);
+
+      if (items.length === 0) {
+        if (typeof window.showAlert === 'function') window.showAlert('Pedido vacío', 'Agregá productos antes de confirmar.');
+        else alert('Agregá productos antes de confirmar.');
+        return;
+      }
+
+      const payload = {
+        client: {
+          name: name,
+          phone: phone,
+          address: type === 'envio' ? address : (address || null)
+        },
+        deliveryType: type,
+        retiroTime: type === 'retiro' ? (retiroTime || null) : null,
+        payment: type === 'envio' && payment ? payment.value : null,
+        cashNote: type === 'envio' && payment && payment.value === 'efectivo' ? (cashNote || null) : null,
+        notes: notes || null,
+        items: items
+      };
+
+      try {
+        const result = await window.CatalogAPI.createOrder(payload);
+        const orderId = result && (result.orderId || result.id);
+        const total = result && result.total != null ? Math.round(result.total) : Math.round(subtotal + getShippingCost());
+        const cartItemsSnapshot = (window.cart.items || []).map((i) => ({
+          productId: i.productId,
+          variantId: i.variantId,
           productName: i.productName,
           quantity: i.quantity,
           price: i.price
-        };
-        if (i.variantId != null && String(i.variantId).trim() !== '') {
-          item.variantId = String(i.variantId).trim();
-        }
-        return item;
-      });
+        }));
 
-      try {
-        const clientId = typeof window.resolveCatalogClientId === 'function'
-          ? await window.resolveCatalogClientId(nrd, name, phone, address)
-          : 'catalogo';
-
-        const cfg = typeof window.getCatalogConfig === 'function' ? window.getCatalogConfig() : {};
-        const now = Date.now();
-        let deliveryDate;
-        if (type === 'retiro' && retiroTime && /^\d{1,2}:\d{2}$/.test(retiroTime.trim())) {
-          const [h, m] = retiroTime.trim().split(':').map((n) => parseInt(n, 10));
-          const today = new Date();
-          const slot = new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m || 0, 0, 0);
-          deliveryDate = slot.getTime();
-          if (deliveryDate <= now) slot.setDate(slot.getDate() + 1);
-          deliveryDate = slot.getTime();
-        } else {
-          let estMinutes = type === 'envio' ? 30 : 60;
-          if (type === 'envio') {
-            const estStr = String(cfg.estimatedMinutes || '30').trim();
-            const firstNum = estStr.match(/\d+/) ? parseInt(estStr.match(/\d+/)[0], 10) : 30;
-            estMinutes = isNaN(firstNum) || firstNum <= 0 ? 30 : Math.min(firstNum, 180);
-          }
-          deliveryDate = now + estMinutes * 60 * 1000;
-          if (deliveryDate < now) deliveryDate = now;
-        }
-
-        const orderData = {
-          clientId,
-          clientName: name + ' - ' + phone,
-          createdAt: Date.now(),
-          status: 'Pendiente',
-          items,
-          total: Math.round(total),
-          notes: orderNotes || null,
-          deliveryDate,
-          deliveryType: type
-        };
-        const authUser = nrd.auth && nrd.auth.getCurrentUser ? nrd.auth.getCurrentUser() : null;
-        if (authUser && authUser.uid) {
-          orderData.catalogUid = authUser.uid;
-        }
-        const orderId = await nrd.orders.create(orderData);
         if (typeof window.addLastOrderToStorage === 'function') {
-          window.addLastOrderToStorage({ name, phone, address, items: window.cart.items, total: Math.round(total) });
+          window.addLastOrderToStorage({ name, phone, address, items: cartItemsSnapshot, total: total });
         }
         if (orderId && typeof window.setActiveOrderIdToStorage === 'function') {
           window.setActiveOrderIdToStorage(orderId);
         }
+        if (orderId && typeof window.setActiveOrderSnapshotToStorage === 'function') {
+          window.setActiveOrderSnapshotToStorage({
+            id: orderId,
+            orderId: orderId,
+            status: (result && result.status) || 'Pendiente',
+            total: total,
+            subtotal: result && result.subtotal != null ? result.subtotal : null,
+            shipping: result && result.shipping != null ? result.shipping : null,
+            deliveryType: type,
+            deliveryDate: result && result.deliveryDate != null ? result.deliveryDate : null,
+            createdAt: Date.now(),
+            items: cartItemsSnapshot
+          });
+        }
         if (typeof window.updateActiveOrderIndicator === 'function') {
           window.updateActiveOrderIndicator();
         }
-        var resumen = '*Nuevo pedido*\n\n';
-        resumen += 'Cliente: ' + (name || '') + '\n';
-        resumen += 'Tel: ' + (phone || '') + '\n';
-        resumen += type === 'envio' ? 'Entrega: ' + (address || '') + '\n' : 'Retiro en local' + (retiroTime ? ' - ' + retiroTime : '') + '\n';
-        if (type === 'envio' && payment) {
-          resumen += 'Pago: ' + (payment.value === 'efectivo' ? 'Efectivo' + (cashNote ? ' (paga con $' + cashNote + ')' : '') : payment.value === 'pos' ? 'Tarjeta débito o crédito' : 'Mercado Pago') + '\n';
-        }
-        resumen += '\n*Pedido:*\n';
-        (window.cart.items || []).forEach(function (i) {
-          resumen += '• ' + (i.quantity || 0) + ' x ' + (i.productName || '') + ' - ' + formatCurrency((i.price || 0) * (i.quantity || 0)) + '\n';
-        });
-        resumen += '\nTotal: ' + formatCurrency(total) + '\n';
-        if (notes && notes.trim()) {
-          resumen += '\nObservaciones:\n' + notes.trim() + '\n';
+
+        var resumen = (result && result.whatsappText) ? String(result.whatsappText) : '';
+        if (!resumen) {
+          resumen = '*Nuevo pedido*\n\n';
+          resumen += 'Cliente: ' + (name || '') + '\n';
+          resumen += 'Tel: ' + (phone || '') + '\n';
+          resumen += type === 'envio' ? 'Entrega: ' + (address || '') + '\n' : 'Retiro en local' + (retiroTime ? ' - ' + retiroTime : '') + '\n';
+          if (type === 'envio' && payment) {
+            resumen += 'Pago: ' + (payment.value === 'efectivo' ? 'Efectivo' + (cashNote ? ' (paga con $' + cashNote + ')' : '') : payment.value === 'pos' ? 'Tarjeta débito o crédito' : 'Mercado Pago') + '\n';
+          }
+          resumen += '\n*Pedido:*\n';
+          cartItemsSnapshot.forEach(function (i) {
+            resumen += '• ' + (i.quantity || 0) + ' x ' + (i.productName || '') + ' - ' + formatCurrency((i.price || 0) * (i.quantity || 0)) + '\n';
+          });
+          resumen += '\nTotal: ' + formatCurrency(total) + '\n';
+          if (notes && notes.trim()) {
+            resumen += '\nObservaciones:\n' + notes.trim() + '\n';
+          }
         }
         try {
           window.open('https://wa.me/' + WHATSAPP_PANADERIA + '?text=' + encodeURIComponent(resumen), '_blank');
@@ -398,8 +385,8 @@
       } catch (err) {
         const msg = (err && err.message) ? err.message : String(err || 'Error desconocido');
         console.error('Error al enviar pedido:', err);
-        if (typeof window.showAlert === 'function') window.showAlert('Error', 'Error al enviar el pedido: ' + msg + '. Intentá de nuevo.');
-        else alert('Error al enviar el pedido: ' + msg + '. Intentá de nuevo.');
+        if (typeof window.showAlert === 'function') window.showAlert('Error', msg);
+        else alert(msg);
       }
     });
   };

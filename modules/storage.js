@@ -5,7 +5,8 @@ const STORAGE_KEYS = {
   CART: 'nrd-catalogo-cart',
   LAST_ORDERS: 'nrd-catalogo-last-orders',
   MAX_LAST_ORDERS: 5,
-  ACTIVE_ORDER_ID: 'nrd-catalogo-active-order-id'
+  ACTIVE_ORDER_ID: 'nrd-catalogo-active-order-id',
+  ACTIVE_ORDER_SNAPSHOT: 'nrd-catalogo-active-order-snapshot'
 };
 
 function getCart() {
@@ -72,8 +73,30 @@ function setActiveOrderId(id) {
     console.warn('Error guardando pedido activo:', e);
   }
 }
+function getActiveOrderSnapshot() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.ACTIVE_ORDER_SNAPSHOT);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    return data && typeof data === 'object' ? data : null;
+  } catch {
+    return null;
+  }
+}
+function setActiveOrderSnapshot(snapshot) {
+  try {
+    if (snapshot && typeof snapshot === 'object') {
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_ORDER_SNAPSHOT, JSON.stringify(snapshot));
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_ORDER_SNAPSHOT);
+    }
+  } catch (e) {
+    console.warn('Error guardando snapshot de pedido activo:', e);
+  }
+}
 function clearActiveOrderId() {
   setActiveOrderId(null);
+  setActiveOrderSnapshot(null);
 }
 
 let lastAddedProduct = null;
@@ -102,6 +125,8 @@ window.getLastOrdersFromStorage = getLastOrders;
 window.addLastOrderToStorage = addLastOrder;
 window.getActiveOrderIdFromStorage = getActiveOrderId;
 window.setActiveOrderIdToStorage = setActiveOrderId;
+window.getActiveOrderSnapshotFromStorage = getActiveOrderSnapshot;
+window.setActiveOrderSnapshotToStorage = setActiveOrderSnapshot;
 window.clearActiveOrderIdFromStorage = clearActiveOrderId;
 window.setLastAddedProductToStorage = setLastAddedProduct;
 window.getAndClearLastAddedProductFromStorage = getAndClearLastAddedProduct;

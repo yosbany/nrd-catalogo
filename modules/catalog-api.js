@@ -72,10 +72,40 @@
     return parseResponse(res);
   }
 
+  /**
+   * POST /payments/mercadopago — crear Preference Checkout Pro
+   * @param {string} orderId
+   */
+  async function createMpPreference(orderId) {
+    if (!orderId) throw new Error('orderId requerido');
+    const res = await fetch(API_BASE + '/payments/mercadopago', {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ orderId: String(orderId) })
+    });
+    return parseResponse(res);
+  }
+
+  /**
+   * GET /payments/mercadopago/{orderId} — sincronizar pago (útil al volver de back_url)
+   * @param {string} orderId
+   */
+  async function syncMpPayment(orderId) {
+    if (!orderId) throw new Error('orderId requerido');
+    const res = await fetch(API_BASE + '/payments/mercadopago/' + encodeURIComponent(orderId), {
+      method: 'GET',
+      headers: headers(),
+      cache: 'no-store'
+    });
+    return parseResponse(res);
+  }
+
   window.CatalogAPI = {
     API_BASE,
     fetchCatalog,
     createOrder,
-    fetchOrder
+    fetchOrder,
+    createMpPreference,
+    syncMpPayment
   };
 })();

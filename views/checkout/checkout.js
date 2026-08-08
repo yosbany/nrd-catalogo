@@ -363,6 +363,10 @@
           quantity: i.quantity,
           price: i.price
         }));
+        const wantsMp = !!(
+          (payment && payment.value === 'mercadopago') ||
+          (result && (result.requiresOnlinePayment === true || result.payment === 'mercadopago'))
+        );
 
         if (typeof window.addLastOrderToStorage === 'function') {
           window.addLastOrderToStorage({ name, phone, address, items: cartItemsSnapshot, total: total });
@@ -380,12 +384,49 @@
             shipping: result && result.shipping != null ? result.shipping : null,
             deliveryType: type,
             deliveryDate: result && result.deliveryDate != null ? result.deliveryDate : null,
+            payment: result && result.payment != null ? result.payment : (payment ? payment.value : null),
+            paymentStatus: result && result.paymentStatus != null ? result.paymentStatus : (wantsMp ? 'pending' : 'none'),
             createdAt: Date.now(),
             items: cartItemsSnapshot
           });
         }
         if (typeof window.updateActiveOrderIndicator === 'function') {
           window.updateActiveOrderIndicator();
+        }
+
+        // Mercado Pago: crear preferencia y redirigir (sin WhatsApp previo)
+        if (wantsMp && orderId) {
+          if (!window.CatalogAPI.createMpPreference) {
+            throw new Error('No se puede iniciar el pago con Mercado Pago. Recargá la página.');
+          }
+          function showPaySpinner(msg) {
+            var el = document.getElementById('loading-spinner');
+            if (!el) return;
+            el.classList.remove('hidden');
+            el.setAttribute('aria-hidden', 'false');
+            el.textContent = msg || 'Cargando...';
+            el.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/40 text-white text-sm font-medium';
+          }
+          function hidePaySpinner() {
+            var el = document.getElementById('loading-spinner');
+            if (!el) return;
+            el.classList.add('hidden');
+            el.setAttribute('aria-hidden', 'true');
+            el.textContent = '';
+            el.className = 'hidden';
+          }
+          showPaySpinner('Redirigiendo a Mercado Pago...');
+          try {
+            const pref = await window.CatalogAPI.createMpPreference(orderId);
+            const payUrl = (pref && (pref.initPoint || pref.sandboxInitPoint)) || '';
+            if (!payUrl) throw new Error('Mercado Pago no devolvió URL de pago');
+            window.cart.clear();
+            window.updateCartCount();
+            window.location.href = payUrl;
+            return;
+          } finally {
+            hidePaySpinner();
+          }
         }
 
         var resumen = (result && result.whatsappText) ? String(result.whatsappText) : '';

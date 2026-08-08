@@ -207,6 +207,71 @@
     el.className = 'hidden';
   }
 
+  async function handleMercadoPagoReturn() {
+    let params;
+    try {
+      params = new URLSearchParams(window.location.search || '');
+    } catch (e) {
+      return;
+    }
+    const paymentReturn = params.get('payment');
+    const orderId = params.get('orderId');
+    if (!paymentReturn || !orderId) return;
+
+    try {
+      const cleanUrl = window.location.pathname + (window.location.hash || '');
+      window.history.replaceState({}, '', cleanUrl);
+    } catch (e) { /* ignore */ }
+
+    if (typeof window.setActiveOrderIdToStorage === 'function') {
+      window.setActiveOrderIdToStorage(orderId);
+    }
+
+    let paymentStatus = '';
+    showSpinnerSafe('Confirmando pago...');
+    try {
+      if (window.CatalogAPI && typeof window.CatalogAPI.syncMpPayment === 'function') {
+        try {
+          const synced = await window.CatalogAPI.syncMpPayment(orderId);
+          if (synced && synced.paymentStatus) paymentStatus = synced.paymentStatus;
+          if (synced && typeof window.setActiveOrderSnapshotToStorage === 'function') {
+            window.setActiveOrderSnapshotToStorage(Object.assign({}, synced, {
+              id: synced.orderId || orderId,
+              orderId: synced.orderId || orderId
+            }));
+          }
+        } catch (syncErr) {
+          console.warn('No se pudo sincronizar pago MP:', syncErr);
+        }
+      }
+      if (!paymentStatus && window.CatalogAPI && typeof window.CatalogAPI.fetchOrder === 'function') {
+        try {
+          const order = await window.CatalogAPI.fetchOrder(orderId);
+          if (order && order.paymentStatus) paymentStatus = order.paymentStatus;
+          if (order && typeof window.setActiveOrderSnapshotToStorage === 'function') {
+            window.setActiveOrderSnapshotToStorage(Object.assign({}, order, {
+              id: order.orderId || orderId,
+              orderId: order.orderId || orderId
+            }));
+          }
+        } catch (fetchErr) {
+          console.warn('No se pudo leer pedido tras pago:', fetchErr);
+        }
+      }
+    } finally {
+      hideSpinnerSafe();
+    }
+
+    if (typeof window.updateActiveOrderIndicator === 'function') {
+      window.updateActiveOrderIndicator();
+    }
+    if (typeof window.showSuccess === 'function') {
+      window.showSuccess({ paymentReturn: paymentReturn, paymentStatus: paymentStatus });
+    } else {
+      showView('success');
+    }
+  }
+
   async function init() {
     showSpinnerSafe('Cargando catálogo...');
     try {
@@ -247,6 +312,7 @@
       if (typeof window.initSuccess === 'function') window.initSuccess();
       updateCartCount();
       updateActiveOrderIndicator();
+      await handleMercadoPagoReturn();
     } finally {
       hideSpinnerSafe();
     }

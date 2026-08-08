@@ -36,6 +36,7 @@
   let activeOrderPollTimer = null;
   let lastActiveOrderStatus = null;
   let activeOrderTimerInterval = null;
+  let rejectedAckInProgress = false;
   const ACTIVE_ORDER_POLL_MS = 15000;
 
   function stopActiveOrderPoll() {
@@ -43,6 +44,15 @@
       clearInterval(activeOrderPollTimer);
       activeOrderPollTimer = null;
     }
+  }
+
+  function isTerminalStatus(status) {
+    const s = (status || '').toLowerCase();
+    return s === 'completado' || s === 'cancelado';
+  }
+
+  function isRejectedStatus(status) {
+    return (status || '').toLowerCase() === 'rechazado';
   }
 
   function mergeActiveOrder(remote, snapshot) {
@@ -56,8 +66,68 @@
       deliveryType: (remote && remote.deliveryType) || snap.deliveryType || null,
       deliveryDate: remote && remote.deliveryDate != null ? remote.deliveryDate : snap.deliveryDate,
       createdAt: snap.createdAt || Date.now(),
-      items: Array.isArray(snap.items) ? snap.items : (remote && Array.isArray(remote.items) ? remote.items : [])
+      items: Array.isArray(snap.items) ? snap.items : (remote && Array.isArray(remote.items) ? remote.items : []),
+      name: snap.name || '',
+      phone: snap.phone || '',
+      address: snap.address || '',
+      rejectReason: (remote && remote.rejectReason) || snap.rejectReason || null
     };
+  }
+
+  function buildRejectedMessage(order) {
+    const reason = order && order.rejectReason ? String(order.rejectReason).trim() : '';
+    let msg = 'El local no pudo aceptar tu pedido.';
+    if (reason) {
+      msg += ' Motivo: ' + reason + '.';
+    }
+    msg += ' Al continuar, se cierra de pendientes y queda en el historial como rechazado.';
+    return msg;
+  }
+
+  function archiveOrderToHistory(order, statusLabel) {
+    if (!order) return;
+    const payload = {
+      orderId: order.orderId || order.id || null,
+      name: order.name || '',
+      phone: order.phone || '',
+      address: order.address || '',
+      items: order.items || [],
+      total: order.total,
+      status: statusLabel || order.status || null,
+      rejectReason: order.rejectReason || null,
+      createdAt: order.createdAt || Date.now()
+    };
+    if (typeof window.upsertLastOrderToStorage === 'function') {
+      window.upsertLastOrderToStorage(payload);
+    } else if (typeof window.addLastOrderToStorage === 'function') {
+      window.addLastOrderToStorage(payload);
+    }
+  }
+
+  async function acknowledgeRejectedOrder(order) {
+    if (rejectedAckInProgress) return;
+    rejectedAckInProgress = true;
+    try {
+      if (typeof window.showAlert === 'function') {
+        await window.showAlert('Pedido rechazado', buildRejectedMessage(order));
+      }
+      archiveOrderToHistory(order, 'Rechazado');
+      lastActiveOrderStatus = null;
+      stopActiveOrderPoll();
+      if (activeOrderTimerInterval) {
+        clearInterval(activeOrderTimerInterval);
+        activeOrderTimerInterval = null;
+      }
+      if (typeof window.clearActiveOrderIdFromStorage === 'function') {
+        window.clearActiveOrderIdFromStorage();
+      }
+      if (typeof window.updateActiveOrderIndicator === 'function') {
+        window.updateActiveOrderIndicator();
+      }
+      render();
+    } finally {
+      rejectedAckInProgress = false;
+    }
   }
 
   function renderActiveOrderCard(order) {
@@ -80,22 +150,54 @@
     const whatsappUrl = 'https://wa.me/' + whatsappNum + '?text=' + encodeURIComponent(defaultMsg);
     const createdAt = order.createdAt ? Number(order.createdAt) : Date.now();
     const deliveryAt = order.deliveryDate ? Number(order.deliveryDate) : 0;
+    const rejected = isRejectedStatus(order.status);
+
+    let footerHtml;
+    if (rejected) {
+      const reasonText = order.rejectReason ? String(order.rejectReason).trim() : '';
+      footerHtml =
+        '<div class="mt-3 space-y-3">' +
+        '<p class="text-sm text-red-800">El local rechazó este pedido.' +
+        (reasonText ? ' Motivo: <strong>' + escapeHtml(reasonText) + '</strong>.' : '') +
+        ' Confirmá para cerrarlo y pasarlo al historial.</p>' +
+        '<div class="flex items-center justify-between gap-2 flex-wrap">' +
+        '<span class="inline-block px-2 py-1 text-xs font-bold text-red-700 uppercase tracking-wide bg-red-100 border border-red-300">RECHAZADO</span>' +
+        '<button type="button" id="cart-active-order-ack-reject" class="px-4 py-2 bg-red-600 text-white text-xs font-medium uppercase tracking-wider hover:bg-red-700 border border-red-700">Entendido</button>' +
+        '</div></div>';
+    } else {
+      footerHtml =
+        '<div class="mt-3 flex items-center justify-between gap-2">' +
+        '<span class="inline-block px-2 py-1 text-xs font-bold text-red-700 uppercase tracking-wide bg-red-100 border border-red-300">' + escapeHtml(order.status || 'Pendiente') + '</span>' +
+        '<a href="' + escapeHtml(whatsappUrl) + '" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 hover:text-green-800 hover:underline shrink-0">' +
+        '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>' +
+        'Contactar por WhatsApp</a></div>';
+    }
+
     activeOrderEl.innerHTML =
-      '<h3 class="text-sm font-semibold text-red-700 mb-2 flex items-center gap-2">Pedido en curso</h3>' +
+      '<h3 class="text-sm font-semibold text-red-700 mb-2 flex items-center gap-2">' +
+      (rejected ? 'Pedido rechazado' : 'Pedido en curso') +
+      '</h3>' +
       '<div id="cart-active-order-card" class="p-4 border-2 border-red-400 bg-red-50 shadow-sm" data-created-at="' + String(createdAt) + '" data-delivery-at="' + String(deliveryAt) + '">' +
       '<ul class="list-none pl-0 space-y-1">' + itemsHtml + '</ul>' +
       (total ? '<p class="text-sm font-bold text-gray-900 mt-2">' + total + '</p>' : '') +
       '<div class="flex items-center gap-2 mt-0.5 flex-wrap">' +
       (dateStr ? '<span class="text-xs text-gray-600">' + escapeHtml(dateStr) + '</span>' : '') +
-      '<span id="cart-active-order-timer" class="flex items-center gap-1.5"></span></div>' +
-      '<div class="mt-3 flex items-center justify-between gap-2">' +
-      '<span class="inline-block px-2 py-1 text-xs font-bold text-red-700 uppercase tracking-wide bg-red-100 border border-red-300">' + escapeHtml(order.status || 'Pendiente') + '</span>' +
-      '<a href="' + escapeHtml(whatsappUrl) + '" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 hover:text-green-800 hover:underline shrink-0">' +
-      '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>' +
-      'Contactar por WhatsApp</a></div>' +
+      (rejected ? '' : '<span id="cart-active-order-timer" class="flex items-center gap-1.5"></span>') +
+      '</div>' +
+      footerHtml +
       '</div>';
-    updateActiveOrderTimer();
-    activeOrderTimerInterval = setInterval(updateActiveOrderTimer, 60000);
+
+    if (rejected) {
+      const ackBtn = document.getElementById('cart-active-order-ack-reject');
+      if (ackBtn) {
+        ackBtn.addEventListener('click', () => {
+          acknowledgeRejectedOrder(order);
+        });
+      }
+    } else {
+      updateActiveOrderTimer();
+      activeOrderTimerInterval = setInterval(updateActiveOrderTimer, 60000);
+    }
   }
 
   async function pollAndRenderActiveOrder() {
@@ -128,12 +230,14 @@
 
     const order = mergeActiveOrder(remote, snapshot);
     const status = (order.status || 'Pendiente').toLowerCase();
-    const isPending = status !== 'completado' && status !== 'cancelado';
+    const wasRejected = isRejectedStatus(lastActiveOrderStatus);
+    const nowRejected = isRejectedStatus(status);
+
     if (status === 'aceptado' && lastActiveOrderStatus === 'pendiente') {
       playAcceptedBeep();
     }
-    lastActiveOrderStatus = status;
-    if (!isPending) {
+
+    if (isTerminalStatus(status)) {
       lastActiveOrderStatus = null;
       stopActiveOrderPoll();
       if (activeOrderTimerInterval) { clearInterval(activeOrderTimerInterval); activeOrderTimerInterval = null; }
@@ -142,10 +246,16 @@
       if (typeof window.updateActiveOrderIndicator === 'function') window.updateActiveOrderIndicator();
       return;
     }
+
+    lastActiveOrderStatus = status;
     if (typeof window.setActiveOrderSnapshotToStorage === 'function') {
       window.setActiveOrderSnapshotToStorage(order);
     }
     renderActiveOrderCard(order);
+
+    if (nowRejected && !wasRejected && !rejectedAckInProgress) {
+      acknowledgeRejectedOrder(order);
+    }
   }
 
   function updateActiveOrderTimer() {
@@ -228,6 +338,16 @@
           const items = ord.items || [];
           const totalStr = ord.total != null ? formatCurrency(ord.total) : '';
           const dateStr = formatOrderDate(ord.createdAt);
+          const statusRaw = (ord.status || '').toLowerCase();
+          const reasonText = ord.rejectReason ? String(ord.rejectReason).trim() : '';
+          const statusBadge = statusRaw === 'rechazado'
+            ? '<span class="inline-block px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-700 bg-red-100 border border-red-300">Rechazado</span>'
+            : statusRaw === 'completado'
+              ? '<span class="inline-block px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-700 bg-green-100 border border-green-300">Completado</span>'
+              : '';
+          const reasonHtml = statusRaw === 'rechazado' && reasonText
+            ? '<p class="mt-1 text-xs text-red-700">Motivo: ' + escapeHtml(reasonText) + '</p>'
+            : '';
           const itemsHtml = items.length
             ? items.map((i) => '<li class="leading-tight">' + escapeHtml((i.quantity || 1) + ' × ' + (i.productName || 'Producto')) + '</li>').join('')
             : '<li class="text-gray-500">Sin ítems</li>';
@@ -235,9 +355,11 @@
           return `<div class="flex items-start justify-between gap-3 p-3 border border-gray-200 bg-white mb-2">
             <div class="flex-1 min-w-0">
               <ul class="text-sm text-gray-800 space-y-0.5 list-none pl-0">${itemsHtml}</ul>
-              <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0 text-xs text-gray-500">
+              ${reasonHtml}
+              <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
                 ${totalStr ? `<span class="font-bold text-gray-800">${totalStr}</span>` : ''}
                 ${dateStr ? `<span>${escapeHtml(dateStr)}</span>` : ''}
+                ${statusBadge}
               </div>
             </div>
             <button type="button" class="cart-repeat-btn flex-shrink-0 inline-flex items-center gap-1.5 py-1.5 px-3 text-sm text-red-600 hover:text-red-700 border border-red-300 hover:bg-red-50" data-idx="${idx}">${repeatIcon}Repetir</button>

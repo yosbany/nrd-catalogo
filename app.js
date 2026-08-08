@@ -249,11 +249,14 @@
               // snapshot mínimo para repetir pedido
               if (typeof window.addLastOrderToStorage === 'function' && synced.total != null) {
                 window.addLastOrderToStorage({
+                  orderId: realOrderId || null,
                   name: name,
                   phone: '',
                   address: '',
                   items: synced.items || [],
-                  total: synced.total
+                  total: synced.total,
+                  status: synced.status || 'Pendiente',
+                  createdAt: Date.now()
                 });
               }
             } catch (e) { /* ignore */ }

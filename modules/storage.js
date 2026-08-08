@@ -41,14 +41,49 @@ function getLastOrders() {
 
 function addLastOrder(order) {
   const list = getLastOrders();
+  const orderId = order.orderId || order.id || null;
   const entry = {
+    orderId: orderId,
     name: order.name || '',
     phone: order.phone || '',
     address: order.address || '',
     items: order.items || [],
     total: order.total,
-    createdAt: Date.now()
+    status: order.status || null,
+    rejectReason: order.rejectReason || null,
+    createdAt: order.createdAt || Date.now()
   };
+  if (orderId) {
+    const existingIdx = list.findIndex((o) => o && (o.orderId === orderId || o.id === orderId));
+    if (existingIdx >= 0) {
+      list[existingIdx] = Object.assign({}, list[existingIdx], entry);
+      try {
+        localStorage.setItem(STORAGE_KEYS.LAST_ORDERS, JSON.stringify(list.slice(0, STORAGE_KEYS.MAX_LAST_ORDERS)));
+      } catch (e) {
+        console.warn('Error guardando últimos pedidos:', e);
+      }
+      return;
+    }
+  }
+  // Historial viejo sin orderId: actualizar el más reciente con mismo total
+  const statusLower = (entry.status || '').toLowerCase();
+  if (statusLower === 'rechazado' || statusLower === 'completado') {
+    const legacyIdx = list.findIndex((o) =>
+      o && !o.orderId && o.total === entry.total && !(o.status && String(o.status).toLowerCase() === statusLower)
+    );
+    if (legacyIdx >= 0) {
+      list[legacyIdx] = Object.assign({}, list[legacyIdx], entry, {
+        orderId: orderId || list[legacyIdx].orderId || null,
+        createdAt: list[legacyIdx].createdAt || entry.createdAt
+      });
+      try {
+        localStorage.setItem(STORAGE_KEYS.LAST_ORDERS, JSON.stringify(list.slice(0, STORAGE_KEYS.MAX_LAST_ORDERS)));
+      } catch (e) {
+        console.warn('Error guardando últimos pedidos:', e);
+      }
+      return;
+    }
+  }
   list.unshift(entry);
   const trimmed = list.slice(0, STORAGE_KEYS.MAX_LAST_ORDERS);
   try {
@@ -56,6 +91,11 @@ function addLastOrder(order) {
   } catch (e) {
     console.warn('Error guardando últimos pedidos:', e);
   }
+}
+
+/** Actualiza o inserta un pedido en el historial (p. ej. al confirmar un rechazo). */
+function upsertLastOrder(order) {
+  addLastOrder(order);
 }
 
 function getActiveOrderId() {
@@ -123,6 +163,7 @@ window.getCartFromStorage = getCart;
 window.setCartToStorage = setCart;
 window.getLastOrdersFromStorage = getLastOrders;
 window.addLastOrderToStorage = addLastOrder;
+window.upsertLastOrderToStorage = upsertLastOrder;
 window.getActiveOrderIdFromStorage = getActiveOrderId;
 window.setActiveOrderIdToStorage = setActiveOrderId;
 window.getActiveOrderSnapshotFromStorage = getActiveOrderSnapshot;

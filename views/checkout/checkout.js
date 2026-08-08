@@ -219,7 +219,27 @@
     updateTotals();
   };
 
+  let checkoutHandlersBound = false;
+  let isCheckoutSubmitting = false;
+
+  function setCheckoutSubmitting(active) {
+    isCheckoutSubmitting = !!active;
+    const confirmBtn = document.getElementById('checkout-confirm-btn');
+    if (confirmBtn) {
+      if (active) {
+        confirmBtn.disabled = true;
+        confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        confirmBtn.textContent = 'Enviando pedido...';
+      } else {
+        updateConfirmButtonState();
+      }
+    }
+  }
+
   window.initCheckout = function () {
+    if (checkoutHandlersBound) return;
+    checkoutHandlersBound = true;
+
     document.querySelectorAll('input[name="deliveryType"]').forEach((r) => {
       r.addEventListener('change', () => {
         const isEnvio = r.value === 'envio';
@@ -266,6 +286,7 @@
 
     document.getElementById('checkout-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (isCheckoutSubmitting) return;
       if (typeof window.isStoreOpen === 'function' && !window.isStoreOpen()) {
         if (typeof window.showAlert === 'function') window.showAlert('Local cerrado', 'El local está cerrado en este momento. No se pueden finalizar pedidos hasta que abramos.');
         else alert('El local está cerrado en este momento. No se pueden finalizar pedidos hasta que abramos.');
@@ -352,6 +373,7 @@
         items: items
       };
 
+      setCheckoutSubmitting(true);
       try {
         const wantsMp = !!(payment && payment.value === 'mercadopago');
 
@@ -407,7 +429,16 @@
         }));
 
         if (typeof window.addLastOrderToStorage === 'function') {
-          window.addLastOrderToStorage({ name, phone, address, items: cartItemsSnapshot, total: total });
+          window.addLastOrderToStorage({
+            orderId: orderId || null,
+            name,
+            phone,
+            address,
+            items: cartItemsSnapshot,
+            total: total,
+            status: (result && result.status) || 'Pendiente',
+            createdAt: Date.now()
+          });
         }
         if (orderId && typeof window.setActiveOrderIdToStorage === 'function') {
           window.setActiveOrderIdToStorage(orderId);
@@ -425,7 +456,10 @@
             payment: result && result.payment != null ? result.payment : (payment ? payment.value : null),
             paymentStatus: result && result.paymentStatus != null ? result.paymentStatus : 'none',
             createdAt: Date.now(),
-            items: cartItemsSnapshot
+            items: cartItemsSnapshot,
+            name: name,
+            phone: phone,
+            address: address
           });
         }
         if (typeof window.updateActiveOrderIndicator === 'function') {
@@ -464,6 +498,8 @@
         console.error('Error al enviar pedido:', err);
         if (typeof window.showAlert === 'function') window.showAlert('Error', msg);
         else alert(msg);
+      } finally {
+        setCheckoutSubmitting(false);
       }
     });
   };

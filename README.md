@@ -15,10 +15,10 @@ El PWA (`https://catalogo.nrdonline.site`) **solo** habla con la API:
 | Método | Ruta | Uso |
 |--------|------|-----|
 | `GET` | `/catalog` | Vitrina (productos, categorías, envío, horarios) |
-| `POST` | `/orders` | Crear pedido (precios/total los calcula el server) |
+| `POST` | `/orders` | Crear pedido (efectivo/POS; **no** Mercado Pago) |
 | `GET` | `/orders/{orderId}` | Estado del pedido activo (poll ~15–20s) |
-| `POST` | `/payments/mercadopago` | Crear Preference Checkout Pro (`{ orderId }` → `initPoint`) |
-| `GET` | `/payments/mercadopago/{orderId}` | Sincronizar estado de pago al volver de MP |
+| `POST` | `/payments/mercadopago` | Checkout online: body = carrito; **no crea pedido**; → `initPoint` |
+| `GET` | `/payments/mercadopago/{checkoutId}` | Sync pago; si aprobado, materializa el pedido |
 
 Cliente: `modules/catalog-api.js`.
 

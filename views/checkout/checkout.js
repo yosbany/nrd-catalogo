@@ -353,50 +353,11 @@
       };
 
       try {
-        const result = await window.CatalogAPI.createOrder(payload);
-        const orderId = result && (result.orderId || result.id);
-        const total = result && result.total != null ? Math.round(result.total) : Math.round(subtotal + getShippingCost());
-        const cartItemsSnapshot = (window.cart.items || []).map((i) => ({
-          productId: i.productId,
-          variantId: i.variantId,
-          productName: i.productName,
-          quantity: i.quantity,
-          price: i.price
-        }));
-        const wantsMp = !!(
-          (payment && payment.value === 'mercadopago') ||
-          (result && (result.requiresOnlinePayment === true || result.payment === 'mercadopago'))
-        );
+        const wantsMp = !!(payment && payment.value === 'mercadopago');
 
-        if (typeof window.addLastOrderToStorage === 'function') {
-          window.addLastOrderToStorage({ name, phone, address, items: cartItemsSnapshot, total: total });
-        }
-        if (orderId && typeof window.setActiveOrderIdToStorage === 'function') {
-          window.setActiveOrderIdToStorage(orderId);
-        }
-        if (orderId && typeof window.setActiveOrderSnapshotToStorage === 'function') {
-          window.setActiveOrderSnapshotToStorage({
-            id: orderId,
-            orderId: orderId,
-            status: (result && result.status) || 'Pendiente',
-            total: total,
-            subtotal: result && result.subtotal != null ? result.subtotal : null,
-            shipping: result && result.shipping != null ? result.shipping : null,
-            deliveryType: type,
-            deliveryDate: result && result.deliveryDate != null ? result.deliveryDate : null,
-            payment: result && result.payment != null ? result.payment : (payment ? payment.value : null),
-            paymentStatus: result && result.paymentStatus != null ? result.paymentStatus : (wantsMp ? 'pending' : 'none'),
-            createdAt: Date.now(),
-            items: cartItemsSnapshot
-          });
-        }
-        if (typeof window.updateActiveOrderIndicator === 'function') {
-          window.updateActiveOrderIndicator();
-        }
-
-        // Mercado Pago: crear preferencia y redirigir (sin WhatsApp previo)
-        if (wantsMp && orderId) {
-          if (!window.CatalogAPI.createMpPreference) {
+        // Mercado Pago: NO crea pedido hasta cobrar. Solo checkout + redirect.
+        if (wantsMp) {
+          if (!window.CatalogAPI.createMpCheckout) {
             throw new Error('No se puede iniciar el pago con Mercado Pago. Recargá la página.');
           }
           function showPaySpinner(msg) {
@@ -417,16 +378,58 @@
           }
           showPaySpinner('Redirigiendo a Mercado Pago...');
           try {
-            const pref = await window.CatalogAPI.createMpPreference(orderId);
+            const mpPayload = Object.assign({}, payload, { payment: 'mercadopago' });
+            const pref = await window.CatalogAPI.createMpCheckout(mpPayload);
             const payUrl = (pref && (pref.initPoint || pref.sandboxInitPoint)) || '';
             if (!payUrl) throw new Error('Mercado Pago no devolvió URL de pago');
-            window.cart.clear();
-            window.updateCartCount();
+            try {
+              if (pref.checkoutId) {
+                sessionStorage.setItem('nrd-mp-checkout-id', String(pref.checkoutId));
+              }
+            } catch (e) { /* ignore */ }
+            // No vaciar carrito ni crear pedido activo: si no paga, puede reintentar
             window.location.href = payUrl;
             return;
           } finally {
             hidePaySpinner();
           }
+        }
+
+        const result = await window.CatalogAPI.createOrder(payload);
+        const orderId = result && (result.orderId || result.id);
+        const total = result && result.total != null ? Math.round(result.total) : Math.round(subtotal + getShippingCost());
+        const cartItemsSnapshot = (window.cart.items || []).map((i) => ({
+          productId: i.productId,
+          variantId: i.variantId,
+          productName: i.productName,
+          quantity: i.quantity,
+          price: i.price
+        }));
+
+        if (typeof window.addLastOrderToStorage === 'function') {
+          window.addLastOrderToStorage({ name, phone, address, items: cartItemsSnapshot, total: total });
+        }
+        if (orderId && typeof window.setActiveOrderIdToStorage === 'function') {
+          window.setActiveOrderIdToStorage(orderId);
+        }
+        if (orderId && typeof window.setActiveOrderSnapshotToStorage === 'function') {
+          window.setActiveOrderSnapshotToStorage({
+            id: orderId,
+            orderId: orderId,
+            status: (result && result.status) || 'Pendiente',
+            total: total,
+            subtotal: result && result.subtotal != null ? result.subtotal : null,
+            shipping: result && result.shipping != null ? result.shipping : null,
+            deliveryType: type,
+            deliveryDate: result && result.deliveryDate != null ? result.deliveryDate : null,
+            payment: result && result.payment != null ? result.payment : (payment ? payment.value : null),
+            paymentStatus: result && result.paymentStatus != null ? result.paymentStatus : 'none',
+            createdAt: Date.now(),
+            items: cartItemsSnapshot
+          });
+        }
+        if (typeof window.updateActiveOrderIndicator === 'function') {
+          window.updateActiveOrderIndicator();
         }
 
         var resumen = (result && result.whatsappText) ? String(result.whatsappText) : '';

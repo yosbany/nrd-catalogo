@@ -30,18 +30,18 @@
       message = 'Tu pedido ya está registrado. Te confirmaremos la preparación.';
       timeText = 'Tiempo estimado: ' + mins + ' min.';
       icon = '✓';
-    } else if (paymentReturn === 'pending' || paymentStatus === 'pending') {
-      title = 'Pago pendiente';
-      message = 'Mercado Pago aún está procesando el pago. Te avisaremos cuando se acredite.';
-      timeText = 'Podés seguir el estado en Mi pedido.';
-      icon = '…';
-      titleClass = 'text-xl font-semibold text-amber-700 mb-2';
     } else if (paymentReturn === 'failure' || paymentStatus === 'rejected' || paymentStatus === 'cancelled') {
-      title = 'Pago no completado';
-      message = 'El pago no se acreditó. El pedido quedó pendiente; podés intentar de nuevo o elegir otro medio.';
-      timeText = 'Revisá el estado en Mi pedido o contactá al local.';
+      title = 'No se completó el pago';
+      message = 'No se cobró nada y no se creó el pedido. Tu carrito sigue listo para reintentar.';
+      timeText = 'Volvé al checkout y elegí Mercado Pago de nuevo cuando quieras.';
       icon = '!';
       titleClass = 'text-xl font-semibold text-red-700 mb-2';
+    } else if (paymentReturn === 'pending' || paymentStatus === 'pending') {
+      title = 'Pago pendiente';
+      message = 'Todavía no confirmamos el cobro. El pedido se crea recién cuando Mercado Pago aprueba el pago.';
+      timeText = 'Si ya pagaste, esperá un momento y revisá Mi pedido.';
+      icon = '…';
+      titleClass = 'text-xl font-semibold text-amber-700 mb-2';
     }
 
     if (titleEl) {

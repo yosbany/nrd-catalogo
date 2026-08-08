@@ -215,49 +215,54 @@
       return;
     }
     const paymentReturn = params.get('payment');
-    const orderId = params.get('orderId');
-    if (!paymentReturn || !orderId) return;
+    const checkoutId = params.get('checkoutId') || params.get('orderId');
+    if (!paymentReturn || !checkoutId) return;
 
     try {
       const cleanUrl = window.location.pathname + (window.location.hash || '');
       window.history.replaceState({}, '', cleanUrl);
     } catch (e) { /* ignore */ }
 
-    if (typeof window.setActiveOrderIdToStorage === 'function') {
-      window.setActiveOrderIdToStorage(orderId);
-    }
-
     let paymentStatus = '';
+    let realOrderId = '';
     showSpinnerSafe('Confirmando pago...');
     try {
       if (window.CatalogAPI && typeof window.CatalogAPI.syncMpPayment === 'function') {
         try {
-          const synced = await window.CatalogAPI.syncMpPayment(orderId);
+          const synced = await window.CatalogAPI.syncMpPayment(checkoutId);
           if (synced && synced.paymentStatus) paymentStatus = synced.paymentStatus;
-          if (synced && typeof window.setActiveOrderSnapshotToStorage === 'function') {
-            window.setActiveOrderSnapshotToStorage(Object.assign({}, synced, {
-              id: synced.orderId || orderId,
-              orderId: synced.orderId || orderId
-            }));
+          realOrderId = (synced && synced.orderId) ? String(synced.orderId) : '';
+          if (realOrderId && paymentStatus === 'approved') {
+            if (typeof window.setActiveOrderIdToStorage === 'function') {
+              window.setActiveOrderIdToStorage(realOrderId);
+            }
+            if (typeof window.setActiveOrderSnapshotToStorage === 'function') {
+              window.setActiveOrderSnapshotToStorage(Object.assign({}, synced, {
+                id: realOrderId,
+                orderId: realOrderId
+              }));
+            }
+            if (window.cart) window.cart.clear();
+            if (typeof window.updateCartCount === 'function') window.updateCartCount();
+            try {
+              const name = (synced.clientDisplayName || '').trim();
+              // snapshot mínimo para repetir pedido
+              if (typeof window.addLastOrderToStorage === 'function' && synced.total != null) {
+                window.addLastOrderToStorage({
+                  name: name,
+                  phone: '',
+                  address: '',
+                  items: synced.items || [],
+                  total: synced.total
+                });
+              }
+            } catch (e) { /* ignore */ }
           }
         } catch (syncErr) {
           console.warn('No se pudo sincronizar pago MP:', syncErr);
         }
       }
-      if (!paymentStatus && window.CatalogAPI && typeof window.CatalogAPI.fetchOrder === 'function') {
-        try {
-          const order = await window.CatalogAPI.fetchOrder(orderId);
-          if (order && order.paymentStatus) paymentStatus = order.paymentStatus;
-          if (order && typeof window.setActiveOrderSnapshotToStorage === 'function') {
-            window.setActiveOrderSnapshotToStorage(Object.assign({}, order, {
-              id: order.orderId || orderId,
-              orderId: order.orderId || orderId
-            }));
-          }
-        } catch (fetchErr) {
-          console.warn('No se pudo leer pedido tras pago:', fetchErr);
-        }
-      }
+      try { sessionStorage.removeItem('nrd-mp-checkout-id'); } catch (e) { /* ignore */ }
     } finally {
       hideSpinnerSafe();
     }
@@ -266,7 +271,11 @@
       window.updateActiveOrderIndicator();
     }
     if (typeof window.showSuccess === 'function') {
-      window.showSuccess({ paymentReturn: paymentReturn, paymentStatus: paymentStatus });
+      window.showSuccess({
+        paymentReturn: paymentReturn,
+        paymentStatus: paymentStatus,
+        orderCreated: !!(realOrderId && paymentStatus === 'approved')
+      });
     } else {
       showView('success');
     }

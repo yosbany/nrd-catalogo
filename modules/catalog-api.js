@@ -73,26 +73,33 @@
   }
 
   /**
-   * POST /payments/mercadopago — crear Preference Checkout Pro
-   * @param {string} orderId
+   * POST /payments/mercadopago — checkout online (NO crea pedido hasta cobrar)
+   * Body = mismo que createOrder con payment=mercadopago
    */
-  async function createMpPreference(orderId) {
-    if (!orderId) throw new Error('orderId requerido');
+  async function createMpCheckout(payload) {
+    if (!payload || typeof payload !== 'object') throw new Error('payload requerido');
     const res = await fetch(API_BASE + '/payments/mercadopago', {
       method: 'POST',
       headers: headers({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ orderId: String(orderId) })
+      body: JSON.stringify(payload)
     });
     return parseResponse(res);
   }
 
+  /** @deprecated usar createMpCheckout(payload) */
+  async function createMpPreference(orderIdOrPayload) {
+    if (orderIdOrPayload && typeof orderIdOrPayload === 'object') {
+      return createMpCheckout(orderIdOrPayload);
+    }
+    throw new Error('Mercado Pago requiere el carrito completo (createMpCheckout)');
+  }
+
   /**
-   * GET /payments/mercadopago/{orderId} — sincronizar pago (útil al volver de back_url)
-   * @param {string} orderId
+   * GET /payments/mercadopago/{checkoutId|orderId} — sincronizar pago al volver de MP
    */
-  async function syncMpPayment(orderId) {
-    if (!orderId) throw new Error('orderId requerido');
-    const res = await fetch(API_BASE + '/payments/mercadopago/' + encodeURIComponent(orderId), {
+  async function syncMpPayment(referenceId) {
+    if (!referenceId) throw new Error('checkoutId/orderId requerido');
+    const res = await fetch(API_BASE + '/payments/mercadopago/' + encodeURIComponent(referenceId), {
       method: 'GET',
       headers: headers(),
       cache: 'no-store'
@@ -105,6 +112,7 @@
     fetchCatalog,
     createOrder,
     fetchOrder,
+    createMpCheckout,
     createMpPreference,
     syncMpPayment
   };

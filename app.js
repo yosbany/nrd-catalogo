@@ -127,7 +127,7 @@
       const minimo = cfg.minimumForShipping != null ? Math.round(cfg.minimumForShipping).toLocaleString('es-UY') : '-';
       deliveryEl.textContent = `${min} min · $${ship} envío · Mínimo $${minimo}`;
     }
-    if (logoEl && typeof window.assetUrl === 'function') logoEl.src = window.assetUrl('assets/icons/icon-192.png');
+    if (logoEl && typeof window.assetUrl === 'function') logoEl.src = window.assetUrl('assets/icons/logo-principal.svg');
   }
 
   function showAlert(title, message) {

@@ -103,3 +103,8 @@ body { background-color: var(--nrd-cream); color: var(--nrd-cocoa); }
 
 /* Cabecera: tinte de marca + franja dorada */
 header.sticky { border-bottom: 3px solid var(--nrd-gold) !important; }
+
+/* Logo de cabecera: logo principal con eslogan (arte vectorial, no retipear) */
+.catalogo-header__logo { height: 3.25rem; width: auto; max-width: 9.5rem; object-fit: contain; }
+@media (min-width: 640px) { .catalogo-header__logo { height: 3.75rem; max-width: 11rem; } }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
